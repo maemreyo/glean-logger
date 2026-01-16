@@ -59,10 +59,8 @@
     "prebuild": "npm run typecheck",
     "pub": "npm run build && npm run lint:check && npm run format:check && npm run test:ci && npm publish --provenance",
     "release": "release-it",
-    "release:patch": "release-it patch",
-    "release:minor": "release-it minor",
-    "release:major": "release-it major",
-    "release:dry": "release-it --dry-run",
+    "release:semantic": "semantic-release",
+    "release:dry": "semantic-release --dry-run --no-ci",
     "prepare": "husky install"
   },
   "lint-staged": {
@@ -113,6 +111,12 @@
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@release-it/conventional-changelog": "^10.0.4",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.6",
+    "@semantic-release/npm": "^12.0.2",
+    "@semantic-release/release-notes-generator": "^14.1.0",
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
@@ -126,6 +130,7 @@
     "lint-staged": "^16.0.0",
     "prettier": "^3.7.4",
     "release-it": "^19.2.3",
+    "semantic-release": "^24.2.9",
     "tsup": "^8.5.1",
     "typedoc": "^0.27.0",
     "typescript": "^5.9.0",
