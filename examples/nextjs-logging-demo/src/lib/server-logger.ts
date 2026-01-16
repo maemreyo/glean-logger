@@ -18,31 +18,15 @@ export interface ServerLogger {
 // ============================================================================
 
 /**
- * Configure HTTP body logging for Next.js API routes.
- * This demonstrates the ApiLoggerBuilder pattern for production-ready
- * HTTP logging with security, performance, and content filtering.
+ * Configure HTTP body logging using the production preset.
+ *
+ * Presets available:
+ * - .basic()      - Just works with sensible defaults
+ * - .production() - Security & performance optimized (used here)
+ * - .development() - Verbose logging for debugging
+ * - .minimal()    - Maximum performance, minimal logging
  */
-export const bodyLoggingConfig = new ApiLoggerBuilder()
-  .enabled(true)
-  .maxSize('10kb')
-  .readTimeout('5s')
-  .excludeContentTypes('image/*', 'video/*', 'application/pdf', 'font/*', 'multipart/form-data')
-  .addRedactionPattern(/\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b/g, '[REDACTED-SSN]', [
-    'ssn',
-    'socialsecuritynumber',
-    'taxid',
-  ])
-  .addRedactionPattern(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[REDACTED-CARD]', [
-    'creditcard',
-    'cardnumber',
-    'ccnumber',
-  ])
-  .addSensitiveFields('password', 'token', 'secret', 'apikey', 'accesstoken', 'refreshtoken')
-  .addSensitiveHeaders('authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token')
-  .skipStatusCodes(204, 304)
-  .verbose(process.env.NODE_ENV === 'development')
-  .maxDepth(10)
-  .build();
+export const bodyLoggingConfig = new ApiLoggerBuilder().production().build();
 
 // Create loggedFetch for external API calls with body logging
 export const loggedFetch = createLoggedFetch({

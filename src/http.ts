@@ -291,10 +291,173 @@ export class ApiLoggerBuilder {
 
   /**
    * Set maximum nesting depth for response body logging
+   * Prevents stack overflow from deeply nested objects
+   *
+   * @param depth - Maximum depth (1-100, default: 10)
    */
   maxDepth(depth: number): this {
     this.config.maxDepth = depth;
     return this;
+  }
+
+  // ============================================================================
+  // Preset Configurations
+  // ============================================================================
+
+  /**
+   * Basic preset - just works with sensible defaults for most use cases.
+   *
+   * Includes:
+   * - Body logging enabled
+   * - 10KB max size, 5s timeout
+   * - Binary content types excluded
+   * - Common sensitive fields redacted
+   * - Verbose in development
+   *
+   * @example
+   * ```typescript
+   * const config = new ApiLoggerBuilder().basic().build();
+   * ```
+   */
+  basic(): this {
+    return this.enabled(true)
+      .maxSize('10kb')
+      .readTimeout('5s')
+      .excludeContentTypes('image/*', 'video/*', 'application/pdf', 'font/*', 'multipart/form-data')
+      .addSensitiveFields('password', 'token', 'secret')
+      .skipStatusCodes(204, 304)
+      .verbose(process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined);
+  }
+
+  /**
+   * Production preset - security and performance optimized for production use.
+   *
+   * Includes:
+   * - Smaller 5KB max size for reduced overhead
+   * - 3s timeout for faster failure detection
+   * - Comprehensive redaction patterns (SSN, credit cards, Bearer tokens)
+   * - Extended sensitive fields and headers redacted
+   * - Never verbose in production
+   * - Shallower 5-level depth for performance
+   *
+   * @example
+   * ```typescript
+   * const config = new ApiLoggerBuilder().production().build();
+   * ```
+   */
+  production(): this {
+    return this.enabled(true)
+      .maxSize('5kb')
+      .readTimeout('3s')
+      .excludeContentTypes(
+        'image/*',
+        'video/*',
+        'application/pdf',
+        'application/zip',
+        'font/*',
+        'multipart/form-data'
+      )
+      .addRedactionPattern(/\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b/g, '[REDACTED-SSN]', [
+        'ssn',
+        'socialsecuritynumber',
+        'taxid',
+      ])
+      .addRedactionPattern(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[REDACTED-CARD]', [
+        'creditcard',
+        'cardnumber',
+        'ccnumber',
+      ])
+      .addRedactionPattern(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]', [
+        'authorization',
+      ])
+      .addSensitiveFields(
+        'password',
+        'token',
+        'secret',
+        'apikey',
+        'accesstoken',
+        'refreshtoken',
+        'privatekey',
+        'ssn',
+        'creditcard',
+        'cardnumber',
+        'cvv',
+        'cvc'
+      )
+      .addSensitiveHeaders(
+        'authorization',
+        'cookie',
+        'set-cookie',
+        'x-api-key',
+        'x-auth-token',
+        'x-forwarded-for'
+      )
+      .skipStatusCodes(204, 304)
+      .verbose(false)
+      .maxDepth(5);
+  }
+
+  /**
+   * Development preset - verbose logging for debugging and development.
+   *
+   * Includes:
+   * - Larger 50KB max size for comprehensive debugging
+   * - 10s timeout for slower development environments
+   * - Fewer content exclusions for full visibility
+   * - Basic sensitive field redaction
+   * - Always verbose in development
+   * - Deeper 20-level depth for complex object debugging
+   *
+   * @example
+   * ```typescript
+   * const config = new ApiLoggerBuilder().development().build();
+   * ```
+   */
+  development(): this {
+    return this.enabled(true)
+      .maxSize('50kb')
+      .readTimeout('10s')
+      .excludeContentTypes('image/*', 'video/*', 'application/pdf')
+      .addSensitiveFields('password', 'token', 'secret')
+      .skipStatusCodes(204, 304)
+      .verbose(true)
+      .maxDepth(20);
+  }
+
+  /**
+   * Minimal preset - maximum performance with minimal logging overhead.
+   *
+   * Includes:
+   * - Body logging disabled (only metadata logged)
+   * - Very small 1KB limit
+   * - 1s timeout for fast failure detection
+   * - Extensive content exclusions
+   * - Skips all success status codes
+   * - Never verbose
+   * - Shallow 3-level depth
+   *
+   * @example
+   * ```typescript
+   * const config = new ApiLoggerBuilder().minimal().build();
+   * ```
+   */
+  minimal(): this {
+    return this.enabled(false)
+      .maxSize('1kb')
+      .readTimeout('1s')
+      .excludeContentTypes(
+        'image/*',
+        'video/*',
+        'application/pdf',
+        'application/zip',
+        'font/*',
+        'multipart/form-data',
+        'application/octet-stream'
+      )
+      .addSensitiveFields('password', 'token', 'secret')
+      .skipStatusCodes(200, 201, 202, 204, 304)
+      .verbose(false)
+      .maxDepth(3);
   }
 
   /**

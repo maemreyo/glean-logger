@@ -25,80 +25,27 @@ import {
 // ============================================================================
 
 /**
- * Configure body logging for HTTP requests/responses.
- * This demonstrates the ApiLoggerBuilder pattern for production-ready
- * HTTP logging with security, performance, and content filtering.
+ * Configure body logging using the production preset.
+ *
+ * Presets available:
+ * - .basic()      - Just works with sensible defaults
+ * - .production() - Security & performance optimized (used here)
+ * - .development() - Verbose logging for debugging
+ * - .minimal()    - Maximum performance, minimal logging
+ *
+ * @example
+ * ```typescript
+ * // Simple usage with preset
+ * const config = new ApiLoggerBuilder().production().build();
+ *
+ * // Or customize after preset
+ * const config = new ApiLoggerBuilder()
+ *   .production()
+ *   .maxSize('20kb')  // Override preset default
+ *   .build();
+ * ```
  */
-const bodyLoggingConfig = new ApiLoggerBuilder()
-  // Enable/disable body logging (default: true)
-  .enabled(true)
-
-  // Maximum body size to log (default: 10KB)
-  // Supports: number (bytes) or string ("10kb", "1mb")
-  .maxSize('10kb')
-
-  // Read timeout for body parsing (default: 5s)
-  // Supports: number (ms) or string ("5s", "5000ms")
-  .readTimeout('5s')
-
-  // Content-Type filtering - exclude binary types from logging
-  .excludeContentTypes(
-    'image/*', // Don't log images
-    'video/*', // Don't log videos
-    'application/pdf', // Don't log PDFs
-    'application/zip', // Don't log archives
-    'font/*', // Don't log fonts
-    'multipart/form-data' // Don't log form uploads
-  )
-
-  // Custom redaction patterns for sensitive data
-  .addRedactionPattern(/\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b/g, '[REDACTED-SSN]', [
-    'ssn',
-    'socialsecuritynumber',
-    'taxid',
-  ])
-  .addRedactionPattern(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[REDACTED-CARD]', [
-    'creditcard',
-    'cardnumber',
-    'ccnumber',
-  ])
-
-  // Fields to redact from JSON bodies
-  .addSensitiveFields(
-    'password',
-    'token',
-    'secret',
-    'apikey',
-    'accesstoken',
-    'refreshtoken',
-    'privatekey',
-    'ssn',
-    'creditcard',
-    'cvv',
-    'cvc'
-  )
-
-  // Headers to redact from request/response
-  .addSensitiveHeaders(
-    'authorization',
-    'cookie',
-    'set-cookie',
-    'x-api-key',
-    'x-auth-token',
-    'x-forwarded-for'
-  )
-
-  // Status codes to skip body logging
-  .skipStatusCodes(204, 304)
-
-  // Verbose logging for debugging (default: false)
-  .verbose(process.env.NODE_ENV === 'development')
-
-  // Maximum JSON nesting depth for redaction (default: 10)
-  .maxDepth(10)
-
-  // Build the final configuration
-  .build();
+const bodyLoggingConfig = new ApiLoggerBuilder().production().build();
 
 // Create main logger
 const log = logger({ name: 'express-api' });

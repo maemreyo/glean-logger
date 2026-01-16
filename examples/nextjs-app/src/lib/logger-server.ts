@@ -5,21 +5,15 @@ import { child, ApiLoggerBuilder, createLoggedFetch, createApiLogger } from '@za
 // ============================================================================
 
 /**
- * Configure HTTP body logging for Next.js API routes.
- * This demonstrates the ApiLoggerBuilder pattern for production-ready
- * HTTP logging with security, performance, and content filtering.
+ * Configure HTTP body logging using the basic preset.
+ *
+ * Presets available:
+ * - .basic()      - Just works with sensible defaults (used here)
+ * - .production() - Security & performance optimized
+ * - .development() - Verbose logging for debugging
+ * - .minimal()    - Maximum performance, minimal logging
  */
-export const bodyLoggingConfig = new ApiLoggerBuilder()
-  .enabled(true)
-  .maxSize('10kb')
-  .readTimeout('5s')
-  .excludeContentTypes('image/*', 'video/*', 'application/pdf', 'font/*', 'multipart/form-data')
-  .addSensitiveFields('password', 'token', 'secret', 'apikey', 'accesstoken', 'refreshtoken')
-  .addSensitiveHeaders('authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token')
-  .skipStatusCodes(204, 304)
-  .verbose(process.env.NODE_ENV === 'development')
-  .maxDepth(10)
-  .build();
+export const bodyLoggingConfig = new ApiLoggerBuilder().basic().build();
 
 // Create loggedFetch for external API calls with body logging
 export const loggedFetch = createLoggedFetch({
