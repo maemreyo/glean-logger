@@ -1,0 +1,60 @@
+{
+  "name": "glean-logger",
+  "version": "1.0.0",
+  "description": "Production-ready logging module for Node.js/TypeScript with auto environment detection, browser-safe logging, and Winston server logging with daily file rotation",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "setup.sh",
+    "install.sh",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "setup": "./setup.sh",
+    "install:deps": "./install.sh",
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "pub": "npm run build && npm publish",
+    "release": "npm run build && git add -A && git commit -m 'chore: release v$(cat VERSION)' && git tag v$(cat VERSION) && git push && git push --tags"
+  },
+  "keywords": [
+    "logger",
+    "logging",
+    "winston",
+    "typescript",
+    "nodejs",
+    "browser",
+    "logrotation"
+  ],
+  "author": "Zaob <zaob.ogn@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maemreyo/glean-logger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maemreyo/glean-logger/issues"
+  },
+  "homepage": "https://github.com/maemreyo/glean-logger#readme",
+  "peerDependencies": {
+    "winston": ">=3.11.0",
+    "winston-daily-rotate-file": ">=4.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "tsup": "^8.5.0",
+    "typescript": "^5.0.0"
+  }
+}
