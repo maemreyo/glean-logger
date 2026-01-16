@@ -1,0 +1,26 @@
+{
+  "name": "express-api",
+  "version": "1.0.0",
+  "description": "Express API example with full HTTP logging using @zaob/glean-logger",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zaob/glean-logger": "file:../..",
+    "express": "^5.2.1",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.9",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
