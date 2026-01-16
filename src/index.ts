@@ -188,3 +188,54 @@ export async function measure<T>(
   const result = await timing.timeAsync(fn);
   return { result: result.result, duration: result.duration };
 }
+
+// ============================================================================
+// HTTP Body Logging Configuration
+// ============================================================================
+
+/**
+ * Builder class for configuring HTTP body logging
+ * Provides a fluent API for setting up request/response logging with:
+ * - Content-Type filtering
+ * - Size limits and truncation
+ * - Sensitive data redaction
+ * - Sampling for high-traffic endpoints
+ *
+ * @example
+ * ```typescript
+ * import { ApiLoggerBuilder } from '@zaob/glean-logger';
+ *
+ * const bodyConfig = new ApiLoggerBuilder()
+ *   .enabled(true)
+ *   .maxSize('10kb')
+ *   .excludeContentTypes('image/*', 'video/*')
+ *   .addSensitiveFields('password', 'token')
+ *   .build();
+ * ```
+ */
+export { ApiLoggerBuilder } from './http';
+
+/**
+ * Create a logged fetch function with full body logging configuration
+ *
+ * @example
+ * ```typescript
+ * import { createLoggedFetch } from '@zaob/glean-logger';
+ *
+ * const fetch = createLoggedFetch({
+ *   enabled: true,
+ *   logger: logger({ name: 'api' }),
+ *   bodyLoggingConfig: new ApiLoggerBuilder()
+ *     .enabled(true)
+ *     .maxSize('10kb')
+ *     .addSensitiveFields('password')
+ *     .build(),
+ * });
+ *
+ * const response = await fetch('/api/data');
+ * // Automatically logs request/response with redaction
+ * ```
+ */
+export { createLoggedFetch } from './http';
+export { createApiLogger } from './http';
+export type { BodyLoggingConfig } from './types';
