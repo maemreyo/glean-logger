@@ -131,23 +131,33 @@ export interface ApiResponseContext {
 }
 
 /**
- * Redaction pattern definition for sensitive data detection
- */
-export interface RedactionPattern {
-  /** Pattern name (e.g., 'SSN', 'CreditCard') */
-  name: string;
-  /** Regex pattern for detecting sensitive data */
-  pattern: RegExp;
-  /** Text to replace matches with */
-  replacement: string;
-  /** Field names to redact by key */
-  keys?: string[];
-}
-
-/**
  * Configuration for logger behavior
  */
 export interface LoggerConfig {
+  /** Minimum log level to output */
+  level: LogLevel;
+  /** Enable/disable logging globally */
+  enabled: boolean;
+  /** Enable automatic sensitive data redaction */
+  redactSensitive: boolean;
+  /** Include stack traces for errors */
+  includeStackTrace: boolean;
+  /** Maximum file size in bytes (for file rotation) */
+  maxFileSize: number;
+  /** Maximum number of days to retain logs */
+  maxFiles: number;
+  /** Log directory path */
+  logDir: string;
+  /** Use JSON format in production */
+  jsonFormat: boolean;
+  /** Use colored/development format in development */
+  developmentFormat: boolean;
+}
+
+/**
+ * Logger factory options
+ */
+export interface LoggerFactoryOptions {
   /** Minimum log level to output */
   level: LogLevel;
   /** Enable/disable logging globally */
@@ -289,4 +299,81 @@ export interface LoggerFactoryOptions {
   version?: string;
   /** Environment (defaults to process.env.NODE_ENV) */
   environment?: string;
+}
+
+// ============================================================================
+// Body Logging Configuration Types
+// ============================================================================
+
+/**
+ * Content type filter configuration
+ */
+export interface ContentTypeFilter {
+  /** Array of content type patterns to include (wildcards supported) */
+  include?: string[];
+  /** Array of content type patterns to exclude (wildcards supported) */
+  exclude?: string[];
+}
+
+/**
+ * Redaction pattern for sensitive data detection
+ */
+export interface RedactionPattern {
+  /** Pattern name (e.g., 'SSN', 'CreditCard') - optional for inline patterns */
+  name?: string;
+  /** Regex pattern to match sensitive values */
+  pattern: RegExp;
+  /** Replacement text */
+  replacement: string;
+  /** Field names to apply this pattern to (if specified, only matches these keys) */
+  fieldNames?: string[];
+}
+
+/**
+ * Sampling configuration for high-traffic endpoints
+ */
+export interface SamplingConfig {
+  /** Sample rate between 0 and 1 (0.1 = 10% of requests) */
+  rate: number;
+  /** URLs or URL patterns to apply sampling to */
+  patterns?: string[];
+}
+
+/**
+ * Body logging configuration - comprehensive control over response body logging
+ */
+export interface BodyLoggingConfig {
+  /** Enable/disable response body logging (default: true) */
+  enabled: boolean;
+  /** Maximum body size in bytes (default: 10KB) */
+  maxSize: number;
+  /** Timeout for reading response body in ms (default: 5000ms) */
+  readTimeout: number;
+  /** Content type filter configuration */
+  contentTypeFilter: ContentTypeFilter;
+  /** Redaction patterns for sensitive data */
+  redactionPatterns: RedactionPattern[];
+  /** Sensitive field names to redact (case-insensitive) */
+  sensitiveFields: string[];
+  /** Sensitive header names to redact (case-insensitive) */
+  sensitiveHeaders: string[];
+  /** Sampling configuration for high-traffic endpoints */
+  sampling?: SamplingConfig;
+  /** Status codes to skip body logging (default: [204, 304]) */
+  skipStatusCodes: number[];
+  /** Enable verbose logging for debugging (default: false) */
+  verbose: boolean;
+  /** Maximum nesting depth for response body logging (default: 10) */
+  maxDepth?: number;
+}
+
+/**
+ * Options for createLoggedFetch function
+ */
+export interface LoggedFetchOptions {
+  logger?: IApiLogger;
+  enabled?: boolean;
+  redactHeaders?: boolean;
+  redactBody?: boolean;
+  bodyLoggingConfig?: BodyLoggingConfig;
 }

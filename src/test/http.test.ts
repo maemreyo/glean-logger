@@ -60,7 +60,6 @@ class MockResponse {
 
   async json(): Promise<unknown> {
     if (!this.body) return null;
-    // Simplified for testing - in real scenario would read from stream
     return { message: 'test' };
   }
 
@@ -154,6 +153,7 @@ describe('HTTP Response Body Logging', () => {
       const headers = { cookie: 'session=abc123', 'content-type': 'application/json' };
       const redacted = redactHeaders(headers);
       expect(redacted?.cookie).toBe('[REDACTED]');
+      expect(redacted?.['content-type']).toBe('application/json');
     });
 
     it('should redact x-api-key header', () => {
@@ -170,6 +170,7 @@ describe('HTTP Response Body Logging', () => {
       const headers = { AUTHORIZATION: 'Bearer token', 'Content-Type': 'application/json' };
       const redacted = redactHeaders(headers);
       expect(redacted?.AUTHORIZATION).toBe('[REDACTED]');
+      expect(redacted?.['Content-Type']).toBe('application/json');
     });
   });
 
@@ -249,8 +250,8 @@ describe('HTTP Response Body Logging', () => {
 });
 
 describe('Content-Type Edge Cases', () => {
-  it('should handle multipart/form-data', () => {
-    expect(getBodyType('multipart/form-data')).toBe('text');
+  it('should handle multipart/form-data as excluded by default', () => {
+    expect(getBodyType('multipart/form-data')).toBe(null);
   });
 
   it('should handle application/x-www-form-urlencoded', () => {
@@ -300,6 +301,8 @@ describe('Sensitive Field Redaction', () => {
     'ssn',
     'creditCard',
     'cardNumber',
+    'cvv',
+    'cvc',
   ];
 
   sensitiveFields.forEach(field => {
@@ -337,10 +340,10 @@ describe('Deeply Nested Redaction', () => {
     };
     const redacted = redactBody(body);
     const data = (redacted as Record<string, unknown>).data as Array<Record<string, unknown>>;
-    const nested1 = data[0].nested as Record<string, unknown>;
-    const nested2 = data[1].nested as Record<string, unknown>;
+    const nested0 = data[0].nested as Record<string, unknown>;
+    const nested1 = data[1].nested as Record<string, unknown>;
+    expect(nested0.password).toBe('[REDACTED]');
     expect(nested1.password).toBe('[REDACTED]');
-    expect(nested2.password).toBe('[REDACTED]');
   });
 });
 
