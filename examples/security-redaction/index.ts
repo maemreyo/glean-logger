@@ -9,7 +9,7 @@
  * - Safe vs. sensitive field handling
  */
 
-import { logger, loggedFetch } from '@zaob/glean-logger';
+import { logger } from '@zaob/glean-logger';
 
 const log = logger({ name: 'security-demo', level: 'info' });
 

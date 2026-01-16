@@ -11,7 +11,7 @@
  */
 
 import express, { type Request, type Response, type NextFunction } from 'express';
-import { logger, child, loggedFetch, measure } from '@zaob/glean-logger';
+import { logger, child, measure } from '@zaob/glean-logger';
 
 // Create main logger
 const log = logger({ name: 'express-api' });
@@ -107,7 +107,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response) => {
   log.error('Unhandled error', {
     error: err.message,
     stack: err.stack,
@@ -119,7 +119,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server with timing
 async function startServer() {
-  const { result, duration } = await measure('server-start', async () => {
+  const { duration } = await measure('server-start', async () => {
     return new Promise<void>(resolve => {
       app.listen(PORT, () => {
         resolve();

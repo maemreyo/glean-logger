@@ -109,6 +109,7 @@ export default [
       '*.mjs',
       '.prettierrc.cjs',
       'src/winston.config.ts',
+      'examples/**/.next/**',
     ],
   },
   eslintConfigPrettier,

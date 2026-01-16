@@ -11,7 +11,7 @@ interface LogEntry {
 }
 
 export default function HomePage() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, _setLogs] = useState<LogEntry[]>([]); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [clickCount, setClickCount] = useState(0);
 
   clientLog.info('Home page mounted', { path: '/' });
