@@ -447,3 +447,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - Repository: https://github.com/maemreyo/glean-logger
 - Issues: https://github.com/maemreyo/glean-logger/issues
 - NPM: https://www.npmjs.com/package/@zaob/glean-logger
+
+# Demo release
