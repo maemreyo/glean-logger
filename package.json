@@ -1,6 +1,6 @@
 {
   "name": "@zaob/glean-logger",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Production-ready logging module for Node.js/TypeScript with auto environment detection, browser-safe logging, and Winston server logging with daily file rotation",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

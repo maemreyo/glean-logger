@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/maemreyo/glean-logger/compare/v1.0.0...v1.1.0) (2026-01-16)
+
+
+### Features
+
+* demo release for semantic-release demonstration ([960fe78](https://github.com/maemreyo/glean-logger/commit/960fe7803299fe0a63c14b0e2578a3672ee2a307))
+
 # 1.0.0 (2026-01-16)
 
 
