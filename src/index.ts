@@ -17,11 +17,9 @@
  * ```
  */
 
-import type { LogContext, LogLevel, IBrowserLogger, IServerLogger } from './types';
 import { browserLogger, createBrowserLogger } from './browser';
-
-// Re-export performance utilities
 import { perf } from './timing';
+import type { LogContext, LogLevel, IBrowserLogger, IServerLogger } from './types';
 export { perf as performance } from './timing';
 
 let _serverLogger: IServerLogger | null = null;

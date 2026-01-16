@@ -1,0 +1,21 @@
+# Codeowners file for glean-logger
+
+# Default codeowners
+* @maemreyo
+
+# Specific sections
+package.json @maemreyo
+tsconfig.json @maemreyo
+tsup.config.ts @maemreyo
+dist/ @maemreyo
+
+# Tests
+test/ @maemreyo
+**/*.test.ts @maemreyo
+
+# CI/CD
+.github/ @maemreyo
+
+# Documentation
+README.md @maemreyo
+CHANGELOG.md @maemreyo

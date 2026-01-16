@@ -22,7 +22,7 @@ export function isServer(): boolean {
  * Check if running in test environment
  */
 export function isTest(): boolean {
-  return process.env.NODE_ENV === 'test';
+  return process.env['NODE_ENV'] === 'test';
 }
 
 /**
@@ -36,7 +36,7 @@ export function generateUUID(): string {
   }
 
   // Fallback implementation for older environments
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
@@ -201,11 +201,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * Get a nested value from an object using dot notation
  */
-export function getNestedValue<T>(
-  obj: Record<string, unknown>,
-  path: string,
-  defaultValue: T
-): T {
+export function getNestedValue<T>(obj: Record<string, unknown>, path: string, defaultValue: T): T {
   const keys = path.split('.');
   let current: unknown = obj;
 
@@ -227,16 +223,12 @@ export function getNestedValue<T>(
 /**
  * Set a nested value in an object using dot notation
  */
-export function setNestedValue(
-  obj: Record<string, unknown>,
-  path: string,
-  value: unknown
-): void {
+export function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
   const keys = path.split('.');
   let current: Record<string, unknown> = obj;
 
   for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i];
+    const key = keys[i] ?? '';
 
     if (!(key in current) || !isObject(current[key])) {
       current[key] = {};
@@ -245,5 +237,6 @@ export function setNestedValue(
     current = current[key] as Record<string, unknown>;
   }
 
-  current[keys[keys.length - 1]] = value;
+  const lastKey = keys[keys.length - 1] ?? '';
+  current[lastKey] = value;
 }

@@ -52,20 +52,6 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
 }
 
 /**
- * Parse number from environment variable
- */
-function parseNumber(value: string | undefined, defaultValue: number): number {
-  if (!value) {
-    return defaultValue;
-  }
-  const parsed = parseInt(value, 10);
-  if (isNaN(parsed)) {
-    return defaultValue;
-  }
-  return parsed;
-}
-
-/**
  * Parse file size string (e.g., "10m", "1g") to bytes
  */
 function parseFileSize(value: string | undefined, defaultValue: number): number {
@@ -74,12 +60,12 @@ function parseFileSize(value: string | undefined, defaultValue: number): number 
   }
 
   const sizeMatch = value.toLowerCase().match(/^(\d+)([bkmg])?$/);
-  if (!sizeMatch) {
+  if (!sizeMatch?.[1]) {
     return defaultValue;
   }
 
   const size = parseInt(sizeMatch[1], 10);
-  const unit = sizeMatch[2];
+  const unit = sizeMatch[2] ?? undefined;
 
   switch (unit) {
     case 'g':
@@ -103,12 +89,12 @@ function parseMaxFiles(value: string | undefined, defaultValue: number): number 
 
   // Handle duration format like "14d" for 14 days
   const durationMatch = value.toLowerCase().match(/^(\d+)([dwh])?$/);
-  if (!durationMatch) {
+  if (!durationMatch?.[1]) {
     return defaultValue;
   }
 
   const amount = parseInt(durationMatch[1], 10);
-  const unit = durationMatch[2];
+  const unit = durationMatch[2] ?? undefined;
 
   switch (unit) {
     case 'w':
@@ -135,20 +121,20 @@ export function getConfig(): LoggerConfig {
     return cachedConfig;
   }
 
-  const level = parseLogLevel(
-    process.env.NEXT_PUBLIC_LOG_LEVEL,
-    'debug'
-  );
+  const level = parseLogLevel(process.env['NEXT_PUBLIC_LOG_LEVEL'], 'debug');
 
   cachedConfig = {
     ...DEFAULT_CONFIG,
     level,
-    enabled: parseBoolean(process.env.NEXT_PUBLIC_LOG_ENABLED, DEFAULT_CONFIG.enabled),
-    redactSensitive: parseBoolean(process.env.API_LOG_REDACT_SENSITIVE, DEFAULT_CONFIG.redactSensitive),
+    enabled: parseBoolean(process.env['NEXT_PUBLIC_LOG_ENABLED'], DEFAULT_CONFIG.enabled),
+    redactSensitive: parseBoolean(
+      process.env['API_LOG_REDACT_SENSITIVE'],
+      DEFAULT_CONFIG.redactSensitive
+    ),
     includeStackTrace: parseBoolean(undefined, DEFAULT_CONFIG.includeStackTrace),
-    maxFileSize: parseFileSize(process.env.LOG_MAX_SIZE, DEFAULT_CONFIG.maxFileSize),
-    maxFiles: parseMaxFiles(process.env.LOG_MAX_FILES, DEFAULT_CONFIG.maxFiles),
-    logDir: process.env.LOG_DIR || DEFAULT_CONFIG.logDir,
+    maxFileSize: parseFileSize(process.env['LOG_MAX_SIZE'], DEFAULT_CONFIG.maxFileSize),
+    maxFiles: parseMaxFiles(process.env['LOG_MAX_FILES'], DEFAULT_CONFIG.maxFiles),
+    logDir: process.env['LOG_DIR'] || DEFAULT_CONFIG.logDir,
     jsonFormat: parseBoolean(undefined, DEFAULT_CONFIG.jsonFormat),
     developmentFormat: parseBoolean(undefined, DEFAULT_CONFIG.developmentFormat),
   };
@@ -194,21 +180,21 @@ export function getLogDir(): string {
  * Check if running in development mode
  */
 export function isDevelopment(): boolean {
-  return process.env.NODE_ENV === 'development';
+  return process.env['NODE_ENV'] === 'development';
 }
 
 /**
  * Check if running in production mode
  */
 export function isProduction(): boolean {
-  return process.env.NODE_ENV === 'production';
+  return process.env['NODE_ENV'] === 'production';
 }
 
 /**
  * Get the current environment
  */
 export function getEnvironment(): string {
-  return process.env.NODE_ENV || 'development';
+  return process.env['NODE_ENV'] || 'development';
 }
 
 /**

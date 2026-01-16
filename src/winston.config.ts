@@ -34,7 +34,7 @@ export function getConsoleTransport() {
           level: level.toUpperCase(),
           message,
         });
-      }),
+      })
     ),
   });
 }

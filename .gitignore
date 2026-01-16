@@ -28,3 +28,5 @@ coverage/
 *.local
 .env
 .env.local
+
+.sisyphus/

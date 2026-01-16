@@ -12,27 +12,21 @@
  * - timeApiCall() utility
  */
 
+import { createServerLogger, ServerLoggerImpl } from './server';
 import type {
   IApiLogger,
   ApiRequestContext,
   ApiResponseContext,
   LogContext,
   InterceptorFunction,
+  IServerLogger,
 } from './types';
 import { generateRequestId, createTimestamp, getPerformanceNow } from './utils';
-import { createServerLogger, ServerLoggerImpl } from './server';
-import type { IServerLogger } from './types';
 
 /**
  * Default sensitive headers to redact
  */
-const SENSITIVE_HEADERS = [
-  'authorization',
-  'cookie',
-  'set-cookie',
-  'x-api-key',
-  'x-auth-token',
-];
+const SENSITIVE_HEADERS = ['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token'];
 
 /**
  * Default sensitive field names to redact
@@ -178,7 +172,8 @@ export function createLoggedFetch(options?: {
       return fetch(input, init);
     }
 
-    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
+    const url =
+      typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
     const requestId = generateRequestId();
     const startTime = getPerformanceNow();
 
@@ -186,9 +181,7 @@ export function createLoggedFetch(options?: {
       requestId,
       method: init?.method ?? 'GET',
       url,
-      headers: redactHeaders(
-        (init?.headers as Record<string, string>) ?? {}
-      ),
+      headers: redactHeaders((init?.headers as Record<string, string>) ?? {}),
       body: redactBody(init?.body),
       timestamp: createTimestamp(),
     };
@@ -235,10 +228,7 @@ export function createLoggedFetch(options?: {
 /**
  * Create fetch interceptors for manual integration
  */
-export function createFetchInterceptor(options?: {
-  logger?: IApiLogger;
-  enabled?: boolean;
-}): {
+export function createFetchInterceptor(options?: { logger?: IApiLogger; enabled?: boolean }): {
   request: InterceptorFunction;
   response: InterceptorFunction;
   error: InterceptorFunction;
@@ -246,10 +236,7 @@ export function createFetchInterceptor(options?: {
   const logger = options?.logger ?? createApiLogger({ name: 'interceptor' });
   const enabled = options?.enabled ?? true;
 
-  const request: InterceptorFunction = async (
-    url: string,
-    options?: RequestInit
-  ) => {
+  const request: InterceptorFunction = async (url: string, options?: RequestInit) => {
     if (!enabled) {
       return { url, options };
     }
@@ -278,10 +265,7 @@ export function createFetchInterceptor(options?: {
     };
   };
 
-  const response: InterceptorFunction = async (
-    url: string,
-    options?: RequestInit
-  ) => {
+  const response: InterceptorFunction = async (url: string, options?: RequestInit) => {
     if (!enabled) {
       return { url, options };
     }
@@ -301,10 +285,7 @@ export function createFetchInterceptor(options?: {
     return { url, options };
   };
 
-  const error: InterceptorFunction = async (
-    url: string,
-    options?: RequestInit
-  ) => {
+  const error: InterceptorFunction = async (url: string, options?: RequestInit) => {
     if (!enabled) {
       return { url, options };
     }

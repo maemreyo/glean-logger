@@ -89,9 +89,7 @@ export function time<T>(fn: () => T): TimingResult & { result: T } {
 /**
  * Measure execution time of an async function
  */
-export async function timeAsync<T>(
-  fn: () => Promise<T>
-): Promise<TimingResult & { result: T }> {
+export async function timeAsync<T>(fn: () => Promise<T>): Promise<TimingResult & { result: T }> {
   const start = now();
   const result = await fn();
   const end = now();
@@ -282,11 +280,7 @@ export function checkPerformance(
  * Performance logger interface
  */
 export interface IPerformanceLogger {
-  logOperation: (
-    operation: string,
-    duration: number,
-    context?: LogContext
-  ) => void;
+  logOperation: (operation: string, duration: number, context?: LogContext) => void;
   logSlowOperation: (
     operation: string,
     duration: number,
@@ -314,11 +308,7 @@ export function createPerformanceTracker(
     /**
      * Track a synchronous operation
      */
-    track<T>(
-      operation: string,
-      fn: () => T,
-      context?: LogContext
-    ): TimingResult & { result: T } {
+    track<T>(operation: string, fn: () => T, context?: LogContext): TimingResult & { result: T } {
       const start = now();
       const result = fn();
       const end = now();
@@ -329,12 +319,7 @@ export function createPerformanceTracker(
       if (check.level === PerformanceLevel.OK) {
         logger.logOperation(operation, duration, context);
       } else {
-        logger.logSlowOperation(
-          operation,
-          duration,
-          check.threshold!,
-          context
-        );
+        logger.logSlowOperation(operation, duration, check.threshold!, context);
       }
 
       return {
@@ -364,12 +349,7 @@ export function createPerformanceTracker(
       if (check.level === PerformanceLevel.OK) {
         logger.logOperation(operation, duration, context);
       } else {
-        logger.logSlowOperation(
-          operation,
-          duration,
-          check.threshold!,
-          context
-        );
+        logger.logSlowOperation(operation, duration, check.threshold!, context);
       }
 
       return {
@@ -391,10 +371,7 @@ export function createPerformanceTracker(
     /**
      * Check performance against thresholds
      */
-    check(
-      operation: string,
-      duration: number
-    ): PerformanceCheck {
+    check(operation: string, duration: number): PerformanceCheck {
       return checkPerformance(duration, defaultThresholds, operation);
     },
   };

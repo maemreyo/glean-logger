@@ -11,8 +11,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": ".",
-    "emitDeclarationOnly": true,
+    "rootDir": "./src",
 
     /* Interop Constraints */
     "esModuleInterop": true,
@@ -24,21 +23,31 @@
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
 
     /* Module Resolution */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["lib/*"]
+      "@/*": ["src/*"]
     },
 
     /* Additional Options */
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
-  "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "dist", "_logs", "*.log"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.mjs"],
+  "exclude": ["node_modules", "dist", "dist-dev", "_logs", "*.log", ".tsbuildinfo"]
 }

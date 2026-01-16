@@ -5,16 +5,16 @@
  * and JSON output (Datadog/CloudWatch compatible).
  */
 
-import type { LogContext, LogLevel, BrowserLogEntry } from './types';
 import { isDevelopment, getConfig } from './config';
+import type { LogContext, LogLevel, BrowserLogEntry } from './types';
 
 /**
  * Colors for console output (ANSI escape codes)
  */
 const COLORS: Record<LogLevel, string> = {
   debug: '\x1b[90m', // gray
-  info: '\x1b[32m',  // green
-  warn: '\x1b[33m',  // yellow
+  info: '\x1b[32m', // green
+  warn: '\x1b[33m', // yellow
   error: '\x1b[31m', // red
   fatal: '\x1b[35m', // magenta
 };

@@ -44,7 +44,14 @@ export const SENSITIVE_KEYS = new Set([
  * High-sensitivity keys that should ALWAYS be redacted by key
  * regardless of redactValues setting (e.g., passwords, secrets)
  */
-const HIGH_SENSITIVITY_KEYS = new Set(['password', 'passwd', 'pwd', 'secret', 'privateKey', 'private_key']);
+const HIGH_SENSITIVITY_KEYS = new Set([
+  'password',
+  'passwd',
+  'pwd',
+  'secret',
+  'privateKey',
+  'private_key',
+]);
 
 /**
  * Default regex patterns for value-based redaction
@@ -52,37 +59,37 @@ const HIGH_SENSITIVITY_KEYS = new Set(['password', 'passwd', 'pwd', 'secret', 'p
 export const DEFAULT_PATTERNS: RedactionPattern[] = [
   {
     name: 'SSN',
-    pattern: /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g,
+    pattern: /..{3}[-.]?.{2}[-.]?.{4}./g,
     replacement: '***-**-****',
   },
   {
     name: 'CreditCard',
-    pattern: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
+    pattern: /.(?:.{4}[-.]?){3}.{4}./g,
     replacement: '****-****-****-****',
   },
   {
     name: 'Email',
-    pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+    pattern: /.[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}./g,
     replacement: '[EMAIL_REDACTED]',
   },
   {
     name: 'IPv4',
-    pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
+    pattern: /.(?:.{1,3}.){3}.{1,3}./g,
     replacement: '[IP_REDACTED]',
   },
   {
     name: 'BearerToken',
-    pattern: /Bearer\s+[a-zA-Z0-9_\-\.]+/gi,
+    pattern: /Bearer.+[a-zA-Z0-9_..]+/gi,
     replacement: 'Bearer [REDACTED]',
   },
   {
     name: 'APIKey',
-    pattern: /\b(sk|live|test|pk)_[a-zA-Z0-9]{20,}\b/gi,
+    pattern: /.(sk|live|test|pk)_[a-zA-Z0-9]{20,}./gi,
     replacement: '[API_KEY_REDACTED]',
   },
   {
     name: 'JWT',
-    pattern: /eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/g,
+    pattern: /eyJ[a-zA-Z0-9_-]*.eyJ[a-zA-Z0-9_-]*.[a-zA-Z0-9_-]*/g,
     replacement: '[JWT_REDACTED]',
   },
 ];
@@ -94,7 +101,7 @@ function valueMatchesPattern(value: unknown, patterns: RedactionPattern[]): bool
   if (typeof value !== 'string') {
     return false;
   }
-  return patterns.some((pattern) => pattern.pattern.test(value));
+  return patterns.some(pattern => pattern.pattern.test(value));
 }
 
 /**
@@ -106,7 +113,7 @@ export function redactByKey(obj: unknown, keys?: Set<string>): unknown {
   }
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => redactByKey(item, keys));
+    return obj.map(item => redactByKey(item, keys));
   }
 
   const result: Record<string, unknown> = {};
@@ -127,10 +134,7 @@ export function redactByKey(obj: unknown, keys?: Set<string>): unknown {
 /**
  * Redact an object by value (regex patterns)
  */
-export function redactByValue(
-  obj: unknown,
-  patterns: RedactionPattern[]
-): unknown {
+export function redactByValue(obj: unknown, patterns: RedactionPattern[]): unknown {
   if (!obj) {
     return obj;
   }
@@ -146,7 +150,7 @@ export function redactByValue(
   }
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => redactByValue(item, patterns));
+    return obj.map(item => redactByValue(item, patterns));
   }
 
   if (typeof obj === 'object') {
@@ -188,7 +192,7 @@ export function redact(
   }
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => redact(item, options));
+    return obj.map(item => redact(item, options));
   }
 
   const result: Record<string, unknown> = {};
@@ -202,7 +206,11 @@ export function redact(
     if (isHighSensitivityKey) {
       if (redactKeys) {
         result[key] = '[REDACTED]';
-      } else if (redactValues && typeof value === 'string' && valueMatchesPattern(value, patterns)) {
+      } else if (
+        redactValues &&
+        typeof value === 'string' &&
+        valueMatchesPattern(value, patterns)
+      ) {
         result[key] = redactByValue(value, patterns);
       } else {
         result[key] = value;
@@ -274,11 +282,8 @@ export function addPattern(
 /**
  * Remove a redaction pattern by name
  */
-export function removePattern(
-  patterns: RedactionPattern[],
-  name: string
-): RedactionPattern[] {
-  return patterns.filter((p) => p.name !== name);
+export function removePattern(patterns: RedactionPattern[], name: string): RedactionPattern[] {
+  return patterns.filter(p => p.name !== name);
 }
 
 /**

@@ -12,8 +12,9 @@
  */
 
 import winston from 'winston';
-import type { IServerLogger, LogContext, LogLevel } from './types';
+
 import { shouldLog, getConfig, isDevelopment } from './config';
+import type { IServerLogger, LogContext, LogLevel } from './types';
 import { getWinstonConfig } from './winston.config';
 
 /**
@@ -102,10 +103,7 @@ class ServerLoggerImpl implements IServerLogger {
 /**
  * Create server logger instance
  */
-function createServerLogger(options?: {
-  name?: string;
-  level?: LogLevel;
-}): IServerLogger {
+function createServerLogger(options?: { name?: string; level?: LogLevel }): IServerLogger {
   return new ServerLoggerImpl(options);
 }
 

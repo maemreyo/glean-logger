@@ -11,9 +11,9 @@
  * - Persists logs to localStorage with quota management
  */
 
-import type { IBrowserLogger, LogContext, LogLevel, BrowserLogEntry, StoredLogs } from './types';
 import { shouldLog, isLoggingEnabled, getConfig } from './config';
 import { formatForConsole, formatForJson, formatBrowserLogEntry } from './formatters';
+import type { IBrowserLogger, LogContext, LogLevel, BrowserLogEntry, StoredLogs } from './types';
 import { generateUUID, createUnixTimestamp, isBrowser } from './utils';
 
 /**

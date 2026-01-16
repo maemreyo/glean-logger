@@ -6,14 +6,32 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
-    "types": "./dist/index.d.ts",
-    "import": "./dist/index.mjs",
-    "require": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.mjs"
+    },
+    "./types": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "files": [
     "dist/",
-    "setup.sh",
-    "install.sh",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
@@ -21,10 +39,29 @@
   "scripts": {
     "setup": "./setup.sh",
     "install:deps": "./install.sh",
-    "build": "tsup",
+    "build": "NODE_ENV=production tsup",
     "build:watch": "tsup --watch",
-    "pub": "npm run build && npm publish",
-    "release": "npm run build && git add -A && git commit -m 'chore: release v$(cat VERSION)' && git tag v$(cat VERSION) && git push && git push --tags"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js,.mjs --fix",
+    "lint:check": "eslint . --ext .ts,.js,.mjs",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "test": "vitest",
+    "test:ci": "vitest --run --coverage",
+    "test:watch": "vitest --watch",
+    "prebuild": "npm run typecheck",
+    "pub": "npm run build && npm run lint:check && npm run format:check && npm run test:ci && npm publish --provenance",
+    "release": "npm run build && git add -A && git commit -m 'chore: release v$(cat VERSION)' && git tag v$(cat VERSION) && git push && git push --tags",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   },
   "keywords": [
     "logger",
@@ -33,18 +70,29 @@
     "typescript",
     "nodejs",
     "browser",
-    "logrotation"
+    "logrotation",
+    "nextjs",
+    "react"
   ],
   "author": "Zaob <zaob.ogn@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/maemreyo/glean-logger.git"
+    "url": "https://github.com/maemreyo/glean-logger.git",
+    "directory": "."
   },
   "bugs": {
     "url": "https://github.com/maemreyo/glean-logger/issues"
   },
   "homepage": "https://github.com/maemreyo/glean-logger#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/maemreyo"
+  },
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
+  },
   "peerDependencies": {
     "winston": ">=3.11.0",
     "winston-daily-rotate-file": ">=4.7.0"
@@ -53,8 +101,21 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.0.9",
-    "tsup": "^8.5.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.34.0",
+    "@typescript-eslint/parser": "^8.34.0",
+    "@vitest/coverage-v8": "^4.0.16",
+    "eslint": "^9.25.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^17.15.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.0.0",
+    "prettier": "^3.7.4",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.53.0",
+    "vitest": "^4.0.16"
   }
 }
