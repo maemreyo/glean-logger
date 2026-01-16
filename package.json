@@ -7,6 +7,10 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "browser": {
+        "import": "./dist/browser-entry.mjs",
+        "require": "./dist/browser-entry.js"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
@@ -18,14 +22,16 @@
       "require": "./dist/index.js"
     },
     "./browser": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "types": "./dist/browser-entry.d.ts",
+      "import": "./dist/browser-entry.mjs",
+      "require": "./dist/browser-entry.js",
+      "default": "./dist/browser-entry.mjs"
     },
     "./server": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "default": "./dist/index.mjs"
     },
     "./package.json": "./package.json"
   },
