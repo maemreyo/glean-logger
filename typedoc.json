@@ -1,0 +1,57 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "glean-logger",
+  "version": "1.0.0",
+  "description": "Production-ready logging module for Node.js/TypeScript with auto environment detection, browser-safe logging, and Winston server logging with daily file rotation",
+  "author": "Zaob <zaob.ogn@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/maemreyo/glean-logger#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maemreyo/glean-logger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maemreyo/glean-logger/issues"
+  },
+  "keywords": ["logger", "logging", "winston", "typescript", "nodejs", "browser", "logrotation"],
+  "entryPoints": [
+    "src/index.ts",
+    "src/browser.ts",
+    "src/server.ts",
+    "src/http.ts",
+    "src/timing.ts",
+    "src/types.ts",
+    "src/config.ts",
+    "src/formatters.ts",
+    "src/utils.ts",
+    "src/redact.ts",
+    "src/schema.ts",
+    "src/winston.config.ts"
+  ],
+  "out": "docs",
+  "theme": "default",
+  "cleanOutputDir": true,
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": false,
+  "excludeNotDocumented": false,
+  "treatWarningsAsErrors": false,
+  "visibilityFilters": {
+    "protected": true,
+    "private": false,
+    "inherited": true,
+    "external": true
+  },
+  "search": {
+    "enabled": true,
+    "limit": 50
+  },
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "commentStyle": "all",
+  "preserveConstEnums": true,
+  "suppressCommentWarningInDeclarationFiles": true
+}

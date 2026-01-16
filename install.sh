@@ -28,7 +28,7 @@ print_error() { echo -e "${RED}❌ $1${NC}"; }
 print_url() { echo -e "${CYAN}🔗 $1${NC}"; }
 
 # Configuration
-NPM_PACKAGE="@zaob/glean-logger"
+NPM_PACKAGE="glean-logger"
 GITHUB_PACKAGE="glean-logger"
 
 # Parse arguments

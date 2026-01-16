@@ -20,7 +20,7 @@
 set -e
 
 # Configuration
-GITHUB_RAW_URL="${GITHUB_RAW_URL:-https://raw.githubusercontent.com/maemreyo/glean-logger/main}"
+GITHUB_RAW_URL="${GITHUB_RAW_URL:-https://raw.githubusercontent.com/maemreyo/glean-logger/main/src}"
 GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/maemreyo/glean-logger}"
 NPM_PACKAGE="glean-logger"
 
@@ -136,23 +136,22 @@ setup_copy() {
         if [[ "$is_remote" == "true" ]]; then
             print_step "Downloading from GitHub..."
             local temp_dir=$(mktemp -d)
-            download_file "$GITHUB_RAW_URL/lib/logger/setup.sh" "$temp_dir/setup.sh"
-            download_file "$GITHUB_RAW_URL/lib/logger/install.sh" "$temp_dir/install.sh"
-            download_file "$GITHUB_RAW_URL/lib/logger/README.md" "$temp_dir/README.md"
+            download_file "$GITHUB_RAW_URL/setup.sh" "$temp_dir/setup.sh"
+            download_file "$GITHUB_RAW_URL/install.sh" "$temp_dir/install.sh"
+            download_file "$GITHUB_RAW_URL/README.md" "$temp_dir/README.md"
 
             local files=("index.ts" "browser.ts" "server.ts" "http.ts" "timing.ts"
                         "types.ts" "config.ts" "formatters.ts" "utils.ts"
-                        "redact.ts" "schema.ts" "winston.config.ts"
-                        "package.json" "tsconfig.json")
+                        "redact.ts" "schema.ts" "winston.config.ts")
 
             for file in "${files[@]}"; do
-                download_file "$GITHUB_RAW_URL/lib/logger/$file" "$temp_dir/lib/logger/$file" || true
+                download_file "$GITHUB_RAW_URL/$file" "$temp_dir/src/$file" || true
             done
 
-            logger_dir="$temp_dir/lib/logger"
+            logger_dir="$temp_dir/src"
         else
             print_error "Could not find logger module!"
-            echo "Please ensure this script is in the lib/logger directory."
+            echo "Please ensure this script is in the glean-logger directory."
             exit 1
         fi
     fi
