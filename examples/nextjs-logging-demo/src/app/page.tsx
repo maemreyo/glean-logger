@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react';
 
 export default function HomePage() {
   const [config, setConfig] = useState<ReturnType<typeof getLoggingConfig> | null>(null);
-  const [logCount, setLogCount] = useState(0);
 
   useEffect(() => {
     setConfig(getLoggingConfig());
