@@ -58,7 +58,11 @@
     "test:watch": "vitest --watch",
     "prebuild": "npm run typecheck",
     "pub": "npm run build && npm run lint:check && npm run format:check && npm run test:ci && npm publish --provenance",
-    "release": "npm run build && git add -A && git commit -m 'chore: release v$(cat VERSION)' && git tag v$(cat VERSION) && git push && git push --tags",
+    "release": "release-it",
+    "release:patch": "release-it patch",
+    "release:minor": "release-it minor",
+    "release:major": "release-it major",
+    "release:dry": "release-it --dry-run",
     "prepare": "husky install"
   },
   "lint-staged": {
@@ -108,6 +112,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
+    "@release-it/conventional-changelog": "^10.0.4",
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
@@ -120,6 +125,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.0.0",
     "prettier": "^3.7.4",
+    "release-it": "^19.2.3",
     "tsup": "^8.5.1",
     "typedoc": "^0.27.0",
     "typescript": "^5.9.0",
