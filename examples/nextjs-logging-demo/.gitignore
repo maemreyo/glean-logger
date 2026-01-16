@@ -1,0 +1,4 @@
+# Logs directory - git ignored
+_logs/
+
+.next/
