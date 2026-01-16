@@ -59,14 +59,127 @@ const SENSITIVE_FIELDS = [
   'password',
   'token',
   'secret',
-  'apiKey',
   'apikey',
-  'accessToken',
-  'refreshToken',
+  'accesstoken',
+  'refreshtoken',
   'ssn',
-  'creditCard',
-  'cardNumber',
+  'creditcard',
+  'cardnumber',
 ];
+
+/**
+ * Maximum response body size to log (10KB)
+ */
+const MAX_BODY_SIZE = 10 * 1024;
+
+/**
+ * Timeout for reading response body (5 seconds)
+ */
+const BODY_READ_TIMEOUT = 5000;
+
+/**
+ * Content types that should NOT have their body logged
+ */
+const BINARY_CONTENT_TYPES = [
+  'image/',
+  'audio/',
+  'video/',
+  'application/pdf',
+  'application/zip',
+  'application/octet-stream',
+  'font/',
+];
+
+/**
+ * Content types that should be logged as text
+ */
+const TEXT_CONTENT_TYPES = [
+  'application/json',
+  'application/xml',
+  'application/vnd.api+json',
+  'text/',
+];
+
+/**
+ * Check if content type is binary (should not log body)
+ */
+function isBinaryContentType(contentType: string): boolean {
+  return BINARY_CONTENT_TYPES.some(type => contentType.toLowerCase().includes(type));
+}
+
+/**
+ * Get response body type based on content-type header
+ */
+function getBodyType(contentType: string): 'json' | 'text' | null {
+  const normalized = contentType.toLowerCase();
+
+  if (TEXT_CONTENT_TYPES.some(type => normalized.includes(type))) {
+    return normalized.includes('json') ? 'json' : 'text';
+  }
+
+  if (isBinaryContentType(normalized)) {
+    return null;
+  }
+
+  // Default to text for unknown types
+  return 'text';
+}
+
+/**
+ * Safely parse response body for logging with timeout and single clone
+ * Handles JSON, text, and skips binary content appropriately
+ */
+async function parseResponseBodyForLog(
+  response: Response,
+  maxSize: number
+): Promise<{ body: unknown; truncated: boolean } | null> {
+  // Check for no-content responses
+  if (response.status === 204 || response.status === 304) {
+    return null;
+  }
+
+  // Skip if body is null/undefined (HEAD requests, etc.)
+  if (!response.body) {
+    return null;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  const bodyType = getBodyType(contentType);
+
+  if (bodyType === null) {
+    // Binary content - don't log body
+    return null;
+  }
+
+  // Check Content-Length header before cloning to avoid memory issues
+  const contentLength = response.headers.get('content-length');
+  if (contentLength) {
+    const size = parseInt(contentLength, 10);
+    if (!isNaN(size) && size > maxSize * 2) {
+      // Response too large - skip body logging
+      return null;
+    }
+  }
+
+  try {
+    // Clone response ONCE - read based on content type
+    const cloned = response.clone();
+
+    let body: unknown;
+    if (bodyType === 'json') {
+      body = await cloned.json();
+    } else {
+      // For text content, read and check size
+      const text = await cloned.text();
+      body = text.length > maxSize ? `${text.slice(0, maxSize)}... [truncated]` : text;
+    }
+
+    return { body, truncated: false };
+  } catch {
+    // Parsing failed - return null
+    return null;
+  }
+}
 
 /**
  * Redact sensitive data from headers
@@ -119,6 +232,21 @@ function redactBody(body: unknown): unknown {
 }
 
 /**
+ * Truncate large response bodies for logging
+ */
+function truncateBody(body: unknown, maxLength = MAX_BODY_SIZE): unknown {
+  if (!body || typeof body === 'string') {
+    const str = String(body ?? '');
+    return str.length > maxLength ? `${str.slice(0, maxLength)}... [truncated]` : str;
+  }
+  if (typeof body === 'object') {
+    const str = JSON.stringify(body);
+    return str.length > maxLength ? `${str.slice(0, maxLength)}... [truncated]` : body;
+  }
+  return body;
+}
+
+/**
  * API Logger implementation
  */
 class ApiLoggerImpl implements IApiLogger {
@@ -153,6 +281,8 @@ class ApiLoggerImpl implements IApiLogger {
       statusCode: context.statusCode,
       duration: context.duration,
       timestamp: context.timestamp,
+      // Include response body if available (already redacted and truncated)
+      ...(context.body !== undefined && { responseBody: context.body }),
     });
   }
 
@@ -222,6 +352,9 @@ export function createLoggedFetch(options?: {
       });
       const duration = getPerformanceNow() - startTime;
 
+      // Clone response to capture body for logging without consuming the original
+      const parsedBody = await parseResponseBodyForLog(response, MAX_BODY_SIZE);
+
       const responseContext: ApiResponseContext = {
         requestId,
         method: requestContext.method,
@@ -229,6 +362,8 @@ export function createLoggedFetch(options?: {
         statusCode: response.status,
         duration,
         timestamp: createTimestamp(),
+        // Apply redaction to response body (already truncated if needed)
+        body: parsedBody ? redactBody(parsedBody.body) : undefined,
       };
 
       logger.logResponse(responseContext);
@@ -371,4 +506,4 @@ export async function timeApiCall<T>(
 }
 
 export default createApiLogger;
-export { ApiLoggerImpl };
+export { ApiLoggerImpl, redactHeaders, redactBody, isBinaryContentType, getBodyType };

@@ -28,7 +28,8 @@ export async function GET() {
       totalDuration: `${totalDuration}ms`,
     });
 
-    logApiResponse('GET', '/api/demo', requestId, 200, totalDuration);
+    // Log response with body content
+    logApiResponse('GET', '/api/demo', requestId, 200, totalDuration, result);
 
     return NextResponse.json(result);
   } catch (error) {

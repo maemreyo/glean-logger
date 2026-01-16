@@ -27,7 +27,8 @@ export function logApiResponse(
   url: string,
   requestId: string,
   status: number,
-  duration: number
+  duration: number,
+  responseBody?: unknown
 ) {
   serverLogger.info('API Response', {
     type: 'response',
@@ -36,6 +37,7 @@ export function logApiResponse(
     requestId,
     status,
     duration: `${duration}ms`,
+    ...(responseBody !== undefined && { responseBody }),
   });
 }
 
