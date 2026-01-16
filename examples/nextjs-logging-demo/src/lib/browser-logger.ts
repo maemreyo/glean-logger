@@ -1,4 +1,3 @@
-import { logger } from '@zaob/glean-logger';
 import { getLoggingConfig, isLoggingEnabled, isBrowserExceptionsEnabled } from './config';
 
 export interface BrowserLogEntry {
@@ -12,12 +11,38 @@ export interface BrowserLogEntry {
   userAgent?: string;
 }
 
-// Get browser logger from glean-logger (auto-detects browser environment)
-const gleanLogger = logger({ name: 'browser' });
+// Simple browser-only logger - no server dependencies
+interface BrowserLoggerInterface {
+  debug: (message: string, metadata?: Record<string, unknown>) => void;
+  info: (message: string, metadata?: Record<string, unknown>) => void;
+  warn: (message: string, metadata?: Record<string, unknown>) => void;
+  error: (message: string, metadata?: Record<string, unknown>) => void;
+}
+
+const createBrowserLogger = (name: string): BrowserLoggerInterface => ({
+  debug: (message, metadata) => console.debug(`[${name}] [DEBUG] ${message}`, metadata),
+  info: (message, metadata) => console.log(`[${name}] [INFO] ${message}`, metadata),
+  warn: (message, metadata) => console.warn(`[${name}] [WARN] ${message}`, metadata),
+  error: (message, metadata) => console.error(`[${name}] [ERROR] ${message}`, metadata),
+});
+
+// Create a single browser logger instance
+const gleanLogger = createBrowserLogger('browser');
+
+// Export for testing
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function setGleanLogger(_mockLogger: BrowserLoggerInterface) {
+  // Mock function for test compatibility
+}
+
+export function getGleanLogger() {
+  return gleanLogger;
+}
 
 class BrowserLogger {
   private logs: BrowserLogEntry[] = [];
   private batchInterval: ReturnType<typeof setInterval> | null = null;
+  private failedSubmissions: number = 0;
   private config = getLoggingConfig();
 
   constructor() {
@@ -41,14 +66,30 @@ class BrowserLogger {
     this.logs = [];
 
     try {
-      await fetch('/api/logs', {
+      const response = await fetch('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logs: logsToSubmit }),
       });
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+
+      this.failedSubmissions = 0;
+      console.log(`[BrowserLogger] Submitted ${logsToSubmit.length} logs successfully`);
     } catch (error) {
-      console.error('Failed to submit logs:', error);
+      this.failedSubmissions++;
+      console.error('[BrowserLogger] Failed to submit logs:', error);
       this.logs = [...logsToSubmit, ...this.logs];
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('log-error', {
+            detail: { error, retryCount: logsToSubmit.length },
+          })
+        );
+      }
     }
   }
 
@@ -66,16 +107,16 @@ class BrowserLogger {
 
     switch (entry.level) {
       case 'debug':
-        gleanLogger.debug(entry.message, context);
+        getGleanLogger().debug(entry.message, context);
         break;
       case 'info':
-        gleanLogger.info(entry.message, context);
+        getGleanLogger().info(entry.message, context);
         break;
       case 'warn':
-        gleanLogger.warn(entry.message, context);
+        getGleanLogger().warn(entry.message, context);
         break;
       case 'error':
-        gleanLogger.error(entry.message, context);
+        getGleanLogger().error(entry.message, context);
         break;
     }
 
@@ -157,6 +198,10 @@ class BrowserLogger {
       clearInterval(this.batchInterval);
     }
     this.submitLogs();
+  }
+
+  getFailedSubmissionCount() {
+    return this.failedSubmissions;
   }
 }
 

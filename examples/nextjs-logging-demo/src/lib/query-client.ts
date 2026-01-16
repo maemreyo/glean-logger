@@ -1,15 +1,13 @@
 import { QueryClient, QueryCache } from '@tanstack/react-query';
-import { logger } from '@zaob/glean-logger';
+import { browserLogger } from './browser-logger';
 import { isBrowserQueriesEnabled } from './config';
-
-const log = logger({ name: 'react-query' });
 
 export function createLoggingQueryClient() {
   return new QueryClient({
     queryCache: new QueryCache({
       onSuccess: (data, query) => {
         if (isBrowserQueriesEnabled()) {
-          log.info('Query succeeded', {
+          browserLogger.info('Query succeeded', {
             queryKey: query.queryKey,
             dataKeys:
               typeof data === 'object' && data !== null
@@ -20,7 +18,7 @@ export function createLoggingQueryClient() {
       },
       onError: (error, query) => {
         if (isBrowserQueriesEnabled()) {
-          log.error('Query failed', {
+          browserLogger.error('Query failed', {
             queryKey: query.queryKey,
             error: error instanceof Error ? error.message : String(error),
           });

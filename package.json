@@ -100,13 +100,14 @@
     "access": "public"
   },
   "peerDependencies": {
-    "winston": ">=3.11.0",
-    "winston-daily-rotate-file": ">=4.7.0"
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^4.7.1"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
@@ -120,9 +121,9 @@
     "lint-staged": "^16.0.0",
     "prettier": "^3.7.4",
     "tsup": "^8.5.1",
+    "typedoc": "^0.27.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.53.0",
-    "vitest": "^4.0.16",
-    "typedoc": "^0.27.0"
+    "vitest": "^4.0.16"
   }
 }
