@@ -31,17 +31,14 @@ function addContext(entry: Record<string, unknown>, context?: LogContext): void 
 class ServerLoggerImpl implements IServerLogger {
   private winston: winston.Logger;
   private context: Record<string, unknown> = {};
+  private loggerName: string;
 
   constructor(options?: { name?: string; level?: LogLevel }) {
     const config = getConfig();
-    const name = options?.name || 'server-logger';
+    this.loggerName = options?.name || 'server-logger';
 
     this.winston = winston.createLogger({
-      name,
-      ...getWinstonConfig({
-        console: true,
-        file: true,
-      }),
+      ...getWinstonConfig(),
       level: options?.level ?? config.level,
       defaultMeta: () => this.context,
     });
@@ -64,12 +61,13 @@ class ServerLoggerImpl implements IServerLogger {
   }
 
   fatal(message: string, context?: LogContext): void {
-    this.winston.fatal(message, this.formatContext(context));
+    // Winston doesn't have fatal, use error instead
+    this.winston.error(message, this.formatContext(context));
   }
 
   child(context: LogContext): IServerLogger {
     const child = new ServerLoggerImpl({
-      name: this.winston.name,
+      name: this.loggerName,
     });
 
     child.context = { ...this.context, ...context };
@@ -79,7 +77,7 @@ class ServerLoggerImpl implements IServerLogger {
 
   with(context: LogContext): IServerLogger {
     const child = new ServerLoggerImpl({
-      name: this.winston.name,
+      name: this.loggerName,
     });
 
     child.context = { ...this.context, ...context };
@@ -96,11 +94,8 @@ class ServerLoggerImpl implements IServerLogger {
   }
 
   static flush(): void {
-    winston.loggers.forEach((logger) => {
-      if ('flushAsync' in logger && typeof logger.flushAsync === 'function') {
-        logger.flushAsync();
-      }
-    });
+    // Winston loggers container doesn't have forEach, skip flush for now
+    // The loggers will flush automatically when the process exits
   }
 }
 

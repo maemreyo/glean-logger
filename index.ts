@@ -163,5 +163,6 @@ export async function measure<T>(
   }
 
   const timing = await import('./timing');
-  return timing.timeAsync(label, fn);
+  const result = await timing.timeAsync(fn);
+  return { result: result.result, duration: result.duration };
 }
