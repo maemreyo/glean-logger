@@ -124,6 +124,8 @@
     "typedoc": "^0.27.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.53.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

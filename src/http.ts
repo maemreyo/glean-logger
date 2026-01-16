@@ -566,16 +566,24 @@ function applyRedaction(
     visited = new WeakSet();
   }
 
-  // Handle arrays
-  if (Array.isArray(body)) {
-    return body.map(item => applyRedaction(item, config, visited, depth));
-  }
-
   // Check for circular reference
   if (visited.has(body)) {
     return '[REDACTED-CIRCULAR]';
   }
   visited.add(body);
+
+  // Handle arrays
+  if (Array.isArray(body)) {
+    return body.map(item => applyRedaction(item, config, visited, depth));
+  }
+
+  // Handle special object types (Date, RegExp, etc.)
+  if (body instanceof Date) {
+    return body.toISOString();
+  }
+  if (body instanceof RegExp) {
+    return body.source;
+  }
 
   const redacted: Record<string, unknown> = {};
 

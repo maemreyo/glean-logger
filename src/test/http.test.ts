@@ -33,8 +33,16 @@
  * - Edge cases (204, 304, streaming, etc.)
  */
 
-import { describe, it, expect } from 'vitest';
-import { redactHeaders, redactBody, isBinaryContentType, getBodyType } from '../http';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  redactHeaders,
+  redactBody,
+  isBinaryContentType,
+  getBodyType,
+  DEFAULT_BODY_LOGGING_CONFIG,
+  ApiLoggerBuilder,
+  createLoggedFetch,
+} from '../http';
 
 // Mock Response class for testing
 class MockResponse {
@@ -368,6 +376,754 @@ describe('Header Redaction Edge Cases', () => {
     const redacted = redactHeaders(headers);
     expect(redacted?.['content-type']).toBe('application/json');
     expect(redacted?.['user-agent']).toBe('test-agent');
-    expect(redacted?.['accept']).toBe('application/json');
+    expect(redacted?.accept).toBe('application/json');
+  });
+});
+
+describe('Circular Reference Detection', () => {
+  it('should detect and redact simple circular reference', () => {
+    const obj: Record<string, unknown> = { name: 'test' };
+    obj.self = obj;
+    const redacted = redactBody(obj);
+    expect((redacted as Record<string, unknown>).self).toBe('[REDACTED-CIRCULAR]');
+  });
+
+  it('should handle nested circular references', () => {
+    const parent: Record<string, unknown> = { name: 'parent' };
+    const child: Record<string, unknown> = { name: 'child' };
+    parent.child = child;
+    (child as Record<string, unknown>).parent = parent;
+    const redacted = redactBody(parent);
+    expect(((redacted as Record<string, unknown>).child as Record<string, unknown>).parent).toBe(
+      '[REDACTED-CIRCULAR]'
+    );
+  });
+
+  it('should handle circular references in arrays', () => {
+    const arr: unknown[] = [1, 2, 3];
+    arr.push(arr);
+    const redacted = redactBody(arr);
+    expect((redacted as unknown[])[3]).toBe('[REDACTED-CIRCULAR]');
+  });
+
+  it('should detect circular reference at maxDepth boundary', () => {
+    const obj: Record<string, unknown> = { a: { b: { c: {} } } };
+    ((obj.a as Record<string, unknown>).b as Record<string, unknown>).c = obj;
+    const redacted = redactBody(obj);
+    expect(
+      (
+        ((redacted as Record<string, unknown>).a as Record<string, unknown>).b as Record<
+          string,
+          unknown
+        >
+      ).c
+    ).toBe('[REDACTED-CIRCULAR]');
+  });
+
+  it('should handle object that references itself immediately', () => {
+    const obj: Record<string, unknown> = {};
+    obj.self = obj;
+    const redacted = redactBody(obj);
+    expect((redacted as Record<string, unknown>).self).toBe('[REDACTED-CIRCULAR]');
+  });
+
+  it('should handle multiple circular references in same structure', () => {
+    const a: Record<string, unknown> = { name: 'a' };
+    const b: Record<string, unknown> = { name: 'b' };
+    a.ref = b;
+    b.ref = a;
+    a.self = a;
+    b.self = b;
+    const redacted = redactBody(a);
+    expect(((redacted as Record<string, unknown>).ref as Record<string, unknown>).ref).toBe(
+      '[REDACTED-CIRCULAR]'
+    );
+    expect((redacted as Record<string, unknown>).self).toBe('[REDACTED-CIRCULAR]');
+  });
+
+  it('should redact sensitive data even with circular reference', () => {
+    const obj: Record<string, unknown> = { password: 'secret', self: null as unknown };
+    obj.self = obj;
+    const redacted = redactBody(obj);
+    expect((redacted as Record<string, unknown>).password).toBe('[REDACTED]');
+    expect((redacted as Record<string, unknown>).self).toBe('[REDACTED-CIRCULAR]');
+  });
+
+  it('should detect circular reference at deep nesting level', () => {
+    const obj: Record<string, unknown> = { level1: { level2: { level3: {} } } };
+    ((obj.level1 as Record<string, unknown>).level2 as Record<string, unknown>).level3 = obj;
+    const redacted = redactBody(obj);
+    const level1 = (redacted as Record<string, unknown>).level1 as Record<string, unknown>;
+    const level2 = level1.level2 as Record<string, unknown>;
+    const level3 = level2.level3;
+    expect(level3).toBe('[REDACTED-CIRCULAR]');
+  });
+});
+
+// ============================================================================
+// PHASE 2: SIZE AND CONTENT HANDLING
+// ============================================================================
+
+describe('Size Limit Enforcement', () => {
+  it('should skip logging when Content-Length exceeds 2x maxSize', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        maxSize: 1024, // 1KB
+      },
+    });
+
+    // Response with content-length > 2KB
+    const response = new Response('test', {
+      headers: {
+        'content-type': 'text/plain',
+        'content-length': '3072', // 3KB > 2 * 1KB
+      },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/large');
+
+    // Response body should be undefined (not logged)
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeUndefined();
+  });
+
+  it('should truncate body larger than maxSize', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        maxSize: 50, // 50 bytes
+      },
+    });
+
+    // Response with small content-length but large actual body
+    const response = new Response('x'.repeat(100), {
+      headers: { 'content-type': 'text/plain' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/medium');
+
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeDefined();
+    const body = context.responseBody as string;
+    expect(body.length).toBeLessThanOrEqual(50 + '... [truncated]'.length);
+    expect(body).toContain('... [truncated]');
+  });
+
+  it('should not truncate body within limit', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        maxSize: 1024, // 1KB
+      },
+    });
+
+    const response = new Response('small body', {
+      headers: { 'content-type': 'text/plain' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/small');
+
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBe('small body');
+  });
+});
+
+describe('Missing Content-Type Header', () => {
+  it('should default to text when Content-Type is missing', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    // Response without content-type header
+    const response = new Response('plain text response', {
+      headers: {},
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/no-ctype');
+
+    // Should log the body
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBe('plain text response');
+  });
+
+  it('should parse body with missing Content-Type', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    const response = new Response('response body', {
+      headers: {},
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/data');
+
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBe('response body');
+  });
+
+  it('should handle empty Content-Type header', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    const response = new Response('body', {
+      headers: { 'content-type': '' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/empty-ctype');
+
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBe('body');
+  });
+});
+
+// ============================================================================
+// PHASE 3: SAMPLING AND PATTERN MATCHING
+// ============================================================================
+
+describe('Sampling Edge Cases', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should skip all requests when rate = 0', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        sampling: { rate: 0 },
+      },
+    });
+
+    const response = new Response('data', {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/data');
+
+    // Request should be logged, but response body should not
+    expect(mockLogger.logRequest).toHaveBeenCalled();
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeUndefined();
+  });
+
+  it('should log all requests when rate = 1', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        sampling: { rate: 1 },
+      },
+    });
+
+    const response = new Response('data', {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/data');
+
+    // Response body should be logged
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeDefined();
+  });
+
+  it('should match URL pattern with wildcards', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        sampling: { rate: 1, patterns: ['/api/*'] },
+      },
+    });
+
+    const response = new Response('data', {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/api/users');
+
+    // Should log because URL matches pattern
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeDefined();
+  });
+
+  it('should apply sampling without patterns to all URLs', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: {
+        ...DEFAULT_BODY_LOGGING_CONFIG,
+        sampling: { rate: 0.5 }, // 50% sampling
+      },
+    });
+
+    const response = new Response('data', {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    // Make 10 requests, should sample some based on Math.random()
+    for (let i = 0; i < 10; i++) {
+      await loggedFetch('https://api.example.com/data');
+    }
+
+    // At least request should be logged
+    expect(mockLogger.logRequest).toHaveBeenCalledTimes(10);
+    expect(mockLogger.logResponse).toHaveBeenCalledTimes(10);
+  });
+});
+
+// ============================================================================
+// PHASE 4: BUILDER VALIDATION
+// ============================================================================
+
+describe('ApiLoggerBuilder Validation', () => {
+  it('should throw error when sampling rate < 0', () => {
+    const builder = new ApiLoggerBuilder();
+    expect(() => {
+      builder.sampling(-0.5);
+    }).toThrow('Sampling rate must be between 0 and 1');
+  });
+
+  it('should throw error when sampling rate > 1', () => {
+    const builder = new ApiLoggerBuilder();
+    expect(() => {
+      builder.sampling(1.5);
+    }).toThrow('Sampling rate must be between 0 and 1');
+  });
+
+  it('should throw error when maxSize < 0', () => {
+    const builder = new ApiLoggerBuilder();
+    builder.maxSize(-1);
+    expect(() => {
+      builder.build();
+    }).toThrow('maxSize must be non-negative');
+  });
+
+  it('should throw error when maxSize > 100MB', () => {
+    const builder = new ApiLoggerBuilder();
+    builder.maxSize(100 * 1024 * 1024 + 1); // 100MB + 1 byte
+    expect(() => {
+      builder.build();
+    }).toThrow('maxSize cannot exceed 100MB');
+  });
+
+  it('should throw error when readTimeout < 0', () => {
+    const builder = new ApiLoggerBuilder();
+    builder.readTimeout(-1);
+    expect(() => {
+      builder.build();
+    }).toThrow('readTimeout must be non-negative');
+  });
+
+  it('should validate sampling rate in build()', () => {
+    const builder = new ApiLoggerBuilder();
+    // Set sampling rate to an invalid value through config
+    builder['config'].sampling = { rate: 2 };
+    expect(() => {
+      builder.build();
+    }).toThrow('sampling rate must be between 0 and 1');
+  });
+});
+
+// ============================================================================
+// PHASE 5: REQUEST BODY EDGE CASES
+// ============================================================================
+
+describe('Request Body Redaction', () => {
+  it('should handle null request body', () => {
+    const body = null;
+    const redacted = redactBody(body);
+    expect(redacted).toBeNull();
+  });
+
+  it('should handle raw string bodies', () => {
+    const body = 'raw string body';
+    const redacted = redactBody(body);
+    expect(redacted).toBe('raw string body');
+  });
+
+  it('should handle object bodies', () => {
+    const body = {
+      username: 'testuser',
+      password: 'secret123',
+      email: 'test@example.com',
+    };
+    const redacted = redactBody(body);
+    expect((redacted as Record<string, unknown>).username).toBe('testuser');
+    expect((redacted as Record<string, unknown>).password).toBe('[REDACTED]');
+    expect((redacted as Record<string, unknown>).email).toBe('test@example.com');
+  });
+});
+
+// ============================================================================
+// PHASE 6: EMPTY AND SPECIAL RESPONSES
+// ============================================================================
+
+describe('Empty Response Bodies', () => {
+  it('should return null for 204 No Content', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    const response = new Response(null, {
+      status: 204,
+      headers: { 'content-type': 'text/plain' },
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/no-content');
+
+    // Response body should not be logged for 204
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeUndefined();
+  });
+
+  it('should return null for 304 Not Modified', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    const response = new Response(null, {
+      status: 304,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/not-modified');
+
+    // Response body should not be logged for 304
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeUndefined();
+  });
+
+  it('should handle empty string body', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    const response = new Response('', {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/empty');
+
+    // Empty string should be logged
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBe('');
+  });
+
+  it('should handle response with null body stream', async () => {
+    const mockLogger = {
+      logRequest: vi.fn(),
+      logResponse: vi.fn(),
+      logError: vi.fn(),
+    };
+
+    const loggedFetch = createLoggedFetch({
+      enabled: true,
+      logger: mockLogger,
+      bodyLoggingConfig: DEFAULT_BODY_LOGGING_CONFIG,
+    });
+
+    // Response with null body (like HEAD request)
+    const response = new Response(null, {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    });
+
+    global.fetch = vi.fn(() => Promise.resolve(response)) as unknown as typeof fetch;
+
+    await loggedFetch('https://api.example.com/head');
+
+    // Should not log null body
+    const responseCall = mockLogger.logResponse.mock.calls[0] as [unknown];
+    const context = responseCall[0] as Record<string, unknown>;
+    expect(context.responseBody).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// ADDITIONAL EDGE CASES
+// ============================================================================
+
+describe('Additional Edge Cases', () => {
+  it('should handle undefined values in objects', () => {
+    const obj = { name: 'test', value: undefined, nested: { value: undefined } };
+    const redacted = redactBody(obj);
+    expect((redacted as Record<string, unknown>).value).toBeUndefined();
+    const nested = (redacted as Record<string, unknown>).nested as Record<string, unknown>;
+    expect(nested.value).toBeUndefined();
+  });
+
+  it('should handle Date objects', () => {
+    const obj = { date: new Date('2024-01-01'), name: 'test' };
+    const redacted = redactBody(obj);
+    expect((redacted as Record<string, unknown>).date).toBeInstanceOf(Date);
+  });
+
+  it('should handle regex objects', () => {
+    const obj = { pattern: /test-\d+/, name: 'test' };
+    const redacted = redactBody(obj);
+    const pattern = (redacted as Record<string, unknown>).pattern as RegExp;
+    expect(pattern).toBeInstanceOf(RegExp);
+    expect(pattern.test('test-123')).toBe(true);
+  });
+
+  it('should handle function properties in objects', () => {
+    const obj = { name: 'test', fn: () => 'hello' };
+    const redacted = redactBody(obj);
+    expect((redacted as Record<string, unknown>).name).toBe('test');
+    expect(typeof (redacted as Record<string, unknown>).fn).toBe('function');
+  });
+
+  it('should handle empty objects', () => {
+    const obj = {};
+    const redacted = redactBody(obj);
+    expect(redacted).toEqual({});
+  });
+
+  it('should handle empty arrays', () => {
+    const arr: unknown[] = [];
+    const redacted = redactBody(arr);
+    expect(redacted).toEqual([]);
+  });
+
+  it('should handle mixed content types in arrays', () => {
+    const arr = ['string', 123, null, undefined, true, false, { name: 'object' }, [1, 2, 3]];
+    const redacted = redactBody(arr);
+    expect(Array.isArray(redacted)).toBe(true);
+    expect((redacted as unknown[]).length).toBe(arr.length);
+  });
+});
+
+describe('Builder Edge Cases', () => {
+  it('should build config with all defaults', () => {
+    const builder = new ApiLoggerBuilder();
+    const config = builder.build();
+
+    expect(config.enabled).toBe(true);
+    expect(config.maxSize).toBe(10 * 1024); // 10KB
+    expect(config.readTimeout).toBe(5000); // 5s
+    expect(config.maxDepth).toBe(10);
+  });
+
+  it('should chain builder methods', () => {
+    const config = new ApiLoggerBuilder()
+      .enabled(false)
+      .maxSize('1mb')
+      .readTimeout('10s')
+      .maxDepth(20)
+      .addSensitiveFields('customField')
+      .addSensitiveHeaders('x-custom')
+      .build();
+
+    expect(config.enabled).toBe(false);
+    expect(config.maxSize).toBe(1024 * 1024); // 1MB
+    expect(config.readTimeout).toBe(10000); // 10s
+    expect(config.maxDepth).toBe(20);
+    expect(config.sensitiveFields).toContain('customfield');
+    expect(config.sensitiveHeaders).toContain('x-custom');
+  });
+
+  it('should merge with initial config', () => {
+    const initial = { enabled: false, maxSize: 2048 };
+    const config = new ApiLoggerBuilder(initial).maxSize(4096).build();
+
+    expect(config.enabled).toBe(false);
+    expect(config.maxSize).toBe(4096); // Should override
+  });
+
+  it('should parse size strings correctly', () => {
+    const builder = new ApiLoggerBuilder();
+    expect(builder['config'].maxSize).toBeUndefined();
+
+    builder.maxSize('10kb');
+    expect(builder['config'].maxSize).toBe(10 * 1024);
+
+    builder.maxSize('1mb');
+    expect(builder['config'].maxSize).toBe(1024 * 1024);
+
+    builder.maxSize(5000);
+    expect(builder['config'].maxSize).toBe(5000);
+  });
+
+  it('should parse duration strings correctly', () => {
+    const builder = new ApiLoggerBuilder();
+    expect(builder['config'].readTimeout).toBeUndefined();
+
+    builder.readTimeout('5s');
+    expect(builder['config'].readTimeout).toBe(5000);
+
+    builder.readTimeout('1000ms');
+    expect(builder['config'].readTimeout).toBe(1000);
+
+    builder.readTimeout(3000);
+    expect(builder['config'].readTimeout).toBe(3000);
+  });
+
+  it('should validate maxDepth range', () => {
+    const builder = new ApiLoggerBuilder();
+
+    expect(() => {
+      builder.maxDepth(0).build();
+    }).toThrow('maxDepth must be between 1 and 100');
+
+    expect(() => {
+      builder.maxDepth(101).build();
+    }).toThrow('maxDepth must be between 1 and 100');
+
+    const config = builder.maxDepth(50).build();
+    expect(config.maxDepth).toBe(50);
   });
 });
