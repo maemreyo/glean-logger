@@ -264,13 +264,124 @@ DevTools Console → See all logs
 Terminal output → Colored console logs
 ```
 
-### Server (Production)
+### Server (Production - Traditional Node.js)
 
 ```
 _logs/
 ├── combined.2026-01-16.log    # All logs
 ├── api.2026-01-16.log         # API logs
 └── error.2026-01-16.log       # Errors only
+```
+
+---
+
+## ☁️ Cloudflare Workers & Local Development
+
+This section covers the recommended setup for **local development debugging** and **Cloudflare Workers deployment**.
+
+### Cloudflare Workers Considerations
+
+**Key Facts:**
+
+- Cloudflare Workers has **NO persistent filesystem**
+- Cannot write logs to local files (unlike traditional Node.js servers)
+- Console logs are automatically captured by Cloudflare dashboard (7-day retention)
+- Use **Logpush** to send logs to external storage (R2, D1, KV) for long-term retention
+
+**Will Logging Fill Up Cloudflare Storage?**
+
+**NO.** Here's why:
+
+- Workers console logs go to Cloudflare's managed logging system, not your storage
+- No persistent files are written to disk (Cloudflare doesn't allow it)
+- Logpush sends logs to external destinations you control
+- Head-based sampling automatically limits volume to 5 billion logs/day
+
+### Recommended Configuration for Cloudflare Workers
+
+```typescript
+// For Cloudflare Workers / Edge environments
+import { logger } from '@zaob/glean-logger';
+
+// Always use console-only logging in Workers
+const log = logger({
+  name: 'my-worker',
+  level: process.env.LOG_LEVEL || 'info',
+});
+
+// Logs appear in Cloudflare Dashboard → Workers & Pages → Your Worker → Logs
+log.info('Request received', { method: 'GET', url: '/api/users' });
+log.error('Something went wrong', { error: err.message });
+```
+
+### Cloudflare Logpush Configuration (wrangler.toml)
+
+```toml
+name = "my-worker"
+compatibility_date = "2024-01-01"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# Optional: Send only errors to external storage
+[[logpush]]
+destination = "r2://my-bucket/logs"
+filter = "level == \"error\""
+sampling_rate = 0.1
+```
+
+### Local Development Setup (Debug Only)
+
+For local development with Cloudflare Workers:
+
+```bash
+# Install Wrangler for local development
+npm install -D wrangler
+
+# Run worker locally with live logging
+npx wrangler dev
+
+# Or use wrangler tail for real-time logs
+npx wrangler tail
+```
+
+### Disabling Logging in Production
+
+If you want to disable logging entirely in production:
+
+```typescript
+// Option 1: Environment-based
+const log = logger({
+  name: 'my-app',
+  enabled: process.env.NODE_ENV !== 'production',
+});
+
+log.info('This will only log in development'); // No-op in production
+
+// Option 2: Complete disable
+const log = logger({
+  name: 'my-app',
+  enabled: false,
+});
+```
+
+### Environment Detection
+
+```typescript
+import { logger, isDevelopment, isProduction } from '@zaob/glean-logger';
+
+const log = logger({ name: 'my-app' });
+
+if (isDevelopment()) {
+  // Development-specific logging
+  log.debug('Detailed debug info', { verboseData });
+}
+
+if (isProduction()) {
+  // Production - minimal logging
+  log.info('Production event', { eventType: 'user_login' });
+}
 ```
 
 ---
