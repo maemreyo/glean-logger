@@ -6,10 +6,7 @@ A production-ready logging module for Node.js/TypeScript with automatic environm
 
 ```bash
 # Install via npm
-npm install glean-logger
-
-# Install peer dependencies
-npm install winston winston-daily-rotate-file
+npm install @zaob/glean-logger
 ```
 
 ## 📦 Usage
@@ -17,7 +14,7 @@ npm install winston winston-daily-rotate-file
 ### Basic Logging (Works Everywhere)
 
 ```typescript
-import { logger, measure, performance } from 'glean-logger';
+import { logger, measure, performance } from '@zaob/glean-logger';
 
 const log = logger({ name: 'my-module' });
 
@@ -35,7 +32,7 @@ console.log(`Query completed in ${duration}ms`);
 ### Server-Only Features
 
 ```typescript
-import { child, loggedFetch } from 'glean-logger';
+import { child, loggedFetch } from '@zaob/glean-logger';
 
 // Child logger with context
 const apiLog = child({ module: 'api', version: '1.0', endpoint: '/api/users' });
@@ -174,7 +171,7 @@ npm run release
 ## 📁 Project Structure
 
 ```
-glean-logger/
+@zaob/glean-logger/
 ├── src/                      # Source code
 │   ├── index.ts             # Main entry point
 │   ├── browser.ts           # Browser-safe logger
@@ -249,4 +246,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - Repository: https://github.com/maemreyo/glean-logger
 - Issues: https://github.com/maemreyo/glean-logger/issues
-- NPM: https://www.npmjs.com/package/glean-logger
+- NPM: https://www.npmjs.com/package/@zaob/glean-logger

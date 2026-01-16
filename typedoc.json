@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "glean-logger",
+  "name": "@zaob/glean-logger",
   "version": "1.0.0",
   "description": "Production-ready logging module for Node.js/TypeScript with auto environment detection, browser-safe logging, and Winston server logging with daily file rotation",
   "author": "Zaob <zaob.ogn@gmail.com>",
