@@ -37,8 +37,21 @@
 
 import { shouldLog, isLoggingEnabled, getConfig } from './config';
 import { formatForConsole, formatForJson, formatBrowserLogEntry } from './formatters';
-import type { IBrowserLogger, LogContext, LogLevel, BrowserLogEntry, StoredLogs } from './types';
+import type {
+  IBrowserLogger,
+  LogContext,
+  LogLevel,
+  BrowserLogEntry,
+  StoredLogs,
+  ClientLogEntry,
+} from './types';
 import { generateUUID, createUnixTimestamp, isBrowser } from './utils';
+import { getClientTransport, ClientTransport } from './client-transport';
+import {
+  installInterceptors as setupInterceptors,
+  uninstallInterceptors as removeInterceptors,
+  areInterceptorsActive,
+} from './interceptors';
 
 /**
  * Storage key for localStorage
@@ -70,6 +83,7 @@ interface BrowserLoggerOptions {
 class BrowserLoggerImpl implements IBrowserLogger {
   private options: Required<BrowserLoggerOptions>;
   private config = getConfig();
+  private transport: ClientTransport | null = null;
 
   constructor(options: BrowserLoggerOptions = {}) {
     this.options = {
@@ -78,6 +92,16 @@ class BrowserLoggerImpl implements IBrowserLogger {
       consoleEnabled: options.consoleEnabled ?? true,
       persistenceEnabled: options.persistenceEnabled ?? true,
     };
+  }
+
+  /**
+   * Get the client transport instance (lazy initialization)
+   */
+  private getTransport(): ClientTransport {
+    if (!this.transport) {
+      this.transport = getClientTransport();
+    }
+    return this.transport;
   }
 
   /**
@@ -104,6 +128,23 @@ class BrowserLoggerImpl implements IBrowserLogger {
     // LocalStorage persistence
     if (this.options.persistenceEnabled && isBrowser()) {
       this.persistEntry(entry, timestamp);
+    }
+
+    // Send to server via client transport (browser only)
+    if (isBrowser()) {
+      const clientEntry: ClientLogEntry = {
+        id: generateUUID(),
+        timestamp,
+        level,
+        message,
+        context,
+        source: 'console',
+      };
+      this.getTransport()
+        .send(clientEntry)
+        .catch(() => {
+          // Silently fail - logs are already in localStorage as fallback
+        });
     }
   }
 
@@ -197,7 +238,9 @@ class BrowserLoggerImpl implements IBrowserLogger {
   }
 
   async flush(): Promise<void> {
-    console.log('[BrowserLogger] flush() called - server sync not yet implemented');
+    if (isBrowser()) {
+      await this.getTransport().flush();
+    }
   }
 }
 
@@ -212,6 +255,10 @@ let instance: BrowserLoggerImpl | null = null;
 function getInstance(): BrowserLoggerImpl {
   if (!instance) {
     instance = new BrowserLoggerImpl();
+    // Auto-install interceptors in browser environment
+    if (isBrowser()) {
+      setupInterceptors(instance);
+    }
   }
   return instance;
 }
@@ -229,4 +276,11 @@ function createBrowserLogger(options?: BrowserLoggerOptions): IBrowserLogger {
 }
 
 export default browserLogger;
-export { browserLogger, createBrowserLogger, BrowserLoggerImpl };
+export {
+  browserLogger,
+  createBrowserLogger,
+  BrowserLoggerImpl,
+  setupInterceptors,
+  removeInterceptors,
+  areInterceptorsActive,
+};

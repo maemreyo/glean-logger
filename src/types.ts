@@ -377,3 +377,105 @@ export interface LoggedFetchOptions {
   redactBody?: boolean;
   bodyLoggingConfig?: BodyLoggingConfig;
 }
+
+// ============================================================================
+// Client-to-Server Logging Types
+// ============================================================================
+
+/**
+ * Log source enumeration - identifies where a log entry originated
+ */
+export type LogSource = 'console' | 'api' | 'error';
+
+/**
+ * Client log entry sent from browser to server
+ * Extends BrowserLogEntry with source field for origin tracking
+ */
+export interface ClientLogEntry {
+  /** Unique identifier (UUID v4) */
+  id: string;
+  /** Unix timestamp in milliseconds */
+  timestamp: number;
+  /** Log severity level */
+  level: LogLevel;
+  /** Primary log message */
+  message: string;
+  /** Additional metadata */
+  context?: LogContext;
+  /** Origin of log entry (console.log, API call, or error) */
+  source: LogSource;
+}
+
+/**
+ * Configuration for batching behavior on the client side
+ */
+export interface BatchingConfig {
+  /** Batching mode: time-based, count-based, or immediate */
+  mode: 'time' | 'count' | 'immediate';
+  /** Time in milliseconds between batched sends (time mode only, default: 3000) */
+  timeIntervalMs: number;
+  /** Number of entries to trigger batch (count mode only, default: 10) */
+  countThreshold: number;
+}
+
+/**
+ * Configuration for retry behavior when batched logs fail to send
+ */
+export interface RetryConfig {
+  /** Whether retry logic is enabled (default: true) */
+  enabled: boolean;
+  /** Maximum number of retry attempts (default: 3) */
+  maxRetries: number;
+  /** Delay before first retry in milliseconds (default: 1000) */
+  initialDelayMs: number;
+  /** Maximum delay between retries in milliseconds (default: 30000) */
+  maxDelayMs: number;
+  /** Exponential backoff multiplier (default: 2) */
+  backoffMultiplier: number;
+}
+
+/**
+ * Combined configuration for client-to-server transport
+ */
+export interface TransportConfig {
+  /** API endpoint path (default: '/api/logger') */
+  endpoint: string;
+  /** Batching configuration */
+  batch: BatchingConfig;
+  /** Retry configuration */
+  retry: RetryConfig;
+}
+
+/**
+ * Response from the API route when logs are successfully written
+ */
+export interface LogWriteResponse {
+  /** Whether the write operation was successful */
+  success: boolean;
+  /** Number of log entries written */
+  count: number;
+}
+
+/**
+ * Next.js plugin configuration options
+ */
+export interface LoggerPluginOptions {
+  /** Enable/disable automatic API route setup (default: true) */
+  apiRoute?: boolean;
+  /** Custom API route path (default: 'api/logger') */
+  apiRoutePath?: string;
+  /** Enable/disable React Provider (default: true) */
+  reactProvider?: boolean;
+  /** Log directory path (default: './_logs') */
+  logDir?: string;
+  /** Batching mode: 'time' | 'count' | 'immediate' (default: 'time') */
+  batchingMode?: 'time' | 'count' | 'immediate';
+  /** Batching interval in milliseconds (default: 3000) */
+  batchingTimeMs?: number;
+  /** Batching count threshold (default: 10) */
+  batchingCount?: number;
+  /** Enable/disable retry logic (default: true) */
+  retryEnabled?: boolean;
+  /** Maximum retry attempts (default: 3) */
+  retryMaxRetries?: number;
+}

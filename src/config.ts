@@ -29,10 +29,10 @@
  * and exposes configuration as a readonly object.
  */
 
-import type { LoggerConfig, LogLevel } from './types';
+import type { LoggerConfig, LogLevel, BatchingConfig, RetryConfig, TransportConfig } from './types';
 
 /**
- * Default configuration values
+ * Default configuration values for core logger
  */
 const DEFAULT_CONFIG: Omit<LoggerConfig, 'level'> = {
   enabled: true,
@@ -46,9 +46,41 @@ const DEFAULT_CONFIG: Omit<LoggerConfig, 'level'> = {
 };
 
 /**
+ * Default batching configuration
+ */
+const DEFAULT_BATCHING: BatchingConfig = {
+  mode: 'time',
+  timeIntervalMs: 3000, // 3 seconds
+  countThreshold: 10,
+};
+
+/**
+ * Default retry configuration
+ */
+const DEFAULT_RETRY: RetryConfig = {
+  enabled: true,
+  maxRetries: 3,
+  initialDelayMs: 1000, // 1 second
+  maxDelayMs: 30000, // 30 seconds
+  backoffMultiplier: 2,
+};
+
+/**
+ * Default transport configuration
+ */
+const DEFAULT_TRANSPORT: Omit<TransportConfig, 'batch' | 'retry'> = {
+  endpoint: '/api/logger',
+};
+
+/**
  * Valid log levels
  */
 const VALID_LOG_LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
+
+/**
+ * Valid batching modes
+ */
+const VALID_BATCHING_MODES = ['time', 'count', 'immediate'] as const;
 
 /**
  * Parse log level from environment variable
@@ -63,6 +95,38 @@ function parseLogLevel(value: string | undefined, defaultValue: LogLevel): LogLe
   }
   console.warn(`Invalid log level "${value}", using default "${defaultValue}"`);
   return defaultValue;
+}
+
+/**
+ * Parse batching mode from environment variable
+ */
+function parseBatchingMode(
+  value: string | undefined,
+  defaultValue: 'time' | 'count' | 'immediate'
+): 'time' | 'count' | 'immediate' {
+  if (!value) {
+    return defaultValue;
+  }
+  const normalized = value.toLowerCase();
+  if (VALID_BATCHING_MODES.includes(normalized as 'time' | 'count' | 'immediate')) {
+    return normalized as 'time' | 'count' | 'immediate';
+  }
+  console.warn(`Invalid batching mode "${value}", using default "${defaultValue}"`);
+  return defaultValue;
+}
+
+/**
+ * Parse positive integer from environment variable
+ */
+function parsePositiveInt(value: string | undefined, defaultValue: number): number {
+  if (!value) {
+    return defaultValue;
+  }
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    return defaultValue;
+  }
+  return parsed;
 }
 
 /**
@@ -226,4 +290,61 @@ export function getEnvironment(): string {
  */
 export function resetConfig(): void {
   cachedConfig = null;
+}
+
+// ============================================================================
+// Batching and Retry Configuration
+// ============================================================================
+
+/**
+ * Get the batching configuration
+ * Loads from environment variables with defaults
+ */
+export function getBatchingConfig(): BatchingConfig {
+  return {
+    mode: parseBatchingMode(process.env['LOGGER_BATCH_MODE'], DEFAULT_BATCHING.mode),
+    timeIntervalMs: parsePositiveInt(
+      process.env['LOGGER_BATCH_TIME_MS'],
+      DEFAULT_BATCHING.timeIntervalMs
+    ),
+    countThreshold: parsePositiveInt(
+      process.env['LOGGER_BATCH_COUNT'],
+      DEFAULT_BATCHING.countThreshold
+    ),
+  };
+}
+
+/**
+ * Get the retry configuration
+ * Loads from environment variables with defaults
+ */
+export function getRetryConfig(): RetryConfig {
+  return {
+    enabled: parseBoolean(process.env['LOGGER_RETRY_ENABLED'], DEFAULT_RETRY.enabled),
+    maxRetries: parsePositiveInt(process.env['LOGGER_RETRY_MAX_RETRIES'], DEFAULT_RETRY.maxRetries),
+    initialDelayMs: parsePositiveInt(
+      process.env['LOGGER_RETRY_INITIAL_DELAY_MS'],
+      DEFAULT_RETRY.initialDelayMs
+    ),
+    maxDelayMs: parsePositiveInt(
+      process.env['LOGGER_RETRY_MAX_DELAY_MS'],
+      DEFAULT_RETRY.maxDelayMs
+    ),
+    backoffMultiplier: parsePositiveInt(
+      process.env['LOGGER_RETRY_BACKOFF_MULTIPLIER'],
+      DEFAULT_RETRY.backoffMultiplier
+    ),
+  };
+}
+
+/**
+ * Get the transport configuration
+ * Combines batching, retry, and endpoint configuration
+ */
+export function getTransportConfig(): TransportConfig {
+  return {
+    endpoint: process.env['LOGGER_TRANSPORT_ENDPOINT'] || DEFAULT_TRANSPORT.endpoint,
+    batch: getBatchingConfig(),
+    retry: getRetryConfig(),
+  };
 }

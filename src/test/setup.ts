@@ -25,6 +25,12 @@
 /// <reference types="vitest" />
 
 // Set test environment variables before anything else
-process.env['NODE_ENV'] = 'test';
+try {
+  // In newer Node.js versions, NODE_ENV is read-only
+  // We set it directly and ignore any errors
+  (process.env as Record<string, string>)['NODE_ENV'] = 'test';
+} catch {
+  // Ignore errors if NODE_ENV is read-only
+}
 process.env['LOGGER_ENABLED'] = 'true';
 process.env['LOG_LEVEL'] = 'debug';
