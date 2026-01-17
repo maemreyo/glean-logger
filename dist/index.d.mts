@@ -681,8 +681,14 @@ declare function logger(options?: {
  * Create a child logger with persistent context
  * Only available in server environment (Winston feature)
  *
+ * **⚠️ SERVER-ONLY**: Returns `null` in browser. Use conditional checks:
+ * ```typescript
+ * const apiLog = child({ module: 'api' });
+ * if (apiLog) { apiLog.info('Request received'); }
+ * ```
+ *
  * @param context - Context to attach to all subsequent logs
- * @returns Child logger instance
+ * @returns Child logger instance (server) or null (browser)
  *
  * @example
  * ```typescript
@@ -696,6 +702,9 @@ declare function child(context: LogContext): IServerLogger | null;
 /**
  * Create a logged fetch wrapper for API calls
  * Automatically logs request/response with timing and redaction
+ *
+ * **⚠️ SERVER-ONLY**: This function throws `Error('loggedFetch is server-only')` when called in browser.
+ * Import from `@zaob/glean-logger/browser` for browser-safe builds.
  *
  * @param options - Configuration options
  * @returns Wrapped fetch function

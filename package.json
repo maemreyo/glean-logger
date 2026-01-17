@@ -1,6 +1,16 @@
 {
   "name": "@zaob/glean-logger",
   "version": "1.1.1",
+  "typesVersions": {
+    ">=4.7": {
+      "*": [
+        "dist/index.d.ts"
+      ],
+      "browser": [
+        "dist/browser-entry.d.mts"
+      ]
+    }
+  },
   "description": "Production-ready logging module for Node.js/TypeScript with auto environment detection, browser-safe logging, and Winston server logging with daily file rotation",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -8,6 +18,7 @@
   "exports": {
     ".": {
       "browser": {
+        "types": "./dist/browser-entry.d.mts",
         "import": "./dist/browser-entry.mjs",
         "require": "./dist/browser-entry.js"
       },

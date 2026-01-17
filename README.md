@@ -9,6 +9,11 @@ A production-ready logging module for Node.js/TypeScript with automatic environm
 npm install @zaob/glean-logger
 ```
 
+## 📋 Requirements
+
+- **Node.js**: >= 18.0.0
+- **TypeScript**: >= 4.7 (for conditional export type support)
+
 ## 📦 Usage
 
 ### Basic Logging (Works Everywhere)
