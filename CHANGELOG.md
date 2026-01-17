@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/maemreyo/glean-logger/compare/v1.1.1...v1.2.0) (2026-01-17)
+
+
+### Features
+
+* add api-client-with-logging example and update agent guide ([ad727c6](https://github.com/maemreyo/glean-logger/commit/ad727c6ef66c545a1c15026b12f4caaae9132940))
+
 ## [1.1.1](https://github.com/maemreyo/glean-logger/compare/v1.1.0...v1.1.1) (2026-01-17)
 
 
