@@ -22,13 +22,6 @@
  * SOFTWARE.
  */
 
-/**
- * Browser-only Entry Point
- *
- * This file exports only browser-safe functionality.
- * Used by bundlers when building for the browser.
- */
-
 import { createBrowserLogger, browserLogger } from './browser';
 import {
   installInterceptors as _installInterceptors,
@@ -36,6 +29,7 @@ import {
   areInterceptorsActive,
   getInterceptorLogger,
 } from './interceptors';
+import { getClientTransport, createClientTransport } from './client-transport';
 import { perf } from './timing';
 import type {
   LogContext,
@@ -44,13 +38,12 @@ import type {
   BatchingConfig,
   TransportConfig,
   RetryConfig,
+  ClientLogEntry,
+  LogSource,
 } from './types';
 
 export { perf as performance } from './timing';
 
-/**
- * Create a browser logger instance
- */
 export function logger(options?: { name?: string; level?: LogLevel }): IBrowserLogger {
   return createBrowserLogger({
     consoleEnabled: true,
@@ -60,9 +53,6 @@ export function logger(options?: { name?: string; level?: LogLevel }): IBrowserL
   });
 }
 
-/**
- * Time an async operation (browser version)
- */
 export async function measure<T>(
   label: string,
   fn: () => Promise<T>
@@ -73,48 +63,20 @@ export async function measure<T>(
   return { result, duration };
 }
 
-// ============================================================================
-// Browser-safe Configuration Functions
-// ============================================================================
-
-/**
- * Get batching configuration for browser environment
- * Uses window object for environment variables in browser
- */
 export function getBatchingConfig(): BatchingConfig {
-  // Browser-safe implementation using window.__ENV__ pattern or defaults
-  const getEnv = (key: string, fallback: string): string => {
-    // Try window.__ENV__ first (set by Next.js with public env vars)
-    if (typeof window !== 'undefined') {
-      const env = (window as { __ENV__?: Record<string, string> }).__ENV__;
-      if (env && key in env) {
-        return env[key]!;
-      }
-    }
-    return fallback;
-  };
-
-  const batchMode = getEnv('LOGGER_BATCH_MODE', 'time');
-  const batchTime = getEnv('LOGGER_BATCH_TIME_MS', '3000');
-  const batchCount = getEnv('LOGGER_BATCH_COUNT', '10');
-
   return {
-    mode: (batchMode as 'time' | 'count' | 'immediate') || 'time',
-    timeIntervalMs: parseInt(batchTime, 10) || 3000,
-    countThreshold: parseInt(batchCount, 10) || 10,
+    mode: 'immediate',
+    timeIntervalMs: 3000,
+    countThreshold: 10,
   };
 }
 
-/**
- * Get transport configuration for browser environment
- */
 export function getTransportConfig(): TransportConfig {
   const getEnv = (key: string, fallback: string): string => {
-    if (typeof window !== 'undefined') {
-      const env = (window as { __ENV__?: Record<string, string> }).__ENV__;
-      if (env && key in env) {
-        return env[key]!;
-      }
+    if (typeof window !== 'undefined' && typeof process !== 'undefined') {
+      const publicKey = `NEXT_PUBLIC_${key}`;
+      const value = (process.env as Record<string, string | undefined>)[publicKey];
+      if (value) return value;
     }
     return fallback;
   };
@@ -126,16 +88,12 @@ export function getTransportConfig(): TransportConfig {
   };
 }
 
-/**
- * Get retry configuration for browser environment
- */
 export function getRetryConfig(): RetryConfig {
   const getEnv = (key: string, fallback: string): string => {
-    if (typeof window !== 'undefined') {
-      const env = (window as { __ENV__?: Record<string, string> }).__ENV__;
-      if (env && key in env) {
-        return env[key]!;
-      }
+    if (typeof window !== 'undefined' && typeof process !== 'undefined') {
+      const publicKey = `NEXT_PUBLIC_${key}`;
+      const value = (process.env as Record<string, string | undefined>)[publicKey];
+      if (value) return value;
     }
     return fallback;
   };
@@ -155,26 +113,19 @@ export function getRetryConfig(): RetryConfig {
   };
 }
 
-// Re-export types
-export type { IBrowserLogger, LogContext, LogLevel };
+export type { IBrowserLogger, LogContext, LogLevel, ClientLogEntry, LogSource };
 
-// Re-export interceptors for browser use
 export { areInterceptorsActive, getInterceptorLogger };
 
-/**
- * Install console and error interceptors for automatic logging
- * Safe for browser use - only works in browser environment
- */
+export { getClientTransport, createClientTransport };
+export type { ClientTransport } from './client-transport';
+
 export function installInterceptors(logger: IBrowserLogger): void {
   if (typeof window !== 'undefined') {
     _installInterceptors(logger);
   }
 }
 
-/**
- * Uninstall interceptors
- * Safe for browser use - only works in browser environment
- */
 export function uninstallInterceptors(): void {
   if (typeof window !== 'undefined') {
     _uninstallInterceptors();

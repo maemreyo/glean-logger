@@ -279,3 +279,6 @@ export {
   createClientTransport,
   type ClientTransport,
 } from './client-transport';
+
+// Client log entry types for browser
+export type { ClientLogEntry, LogSource } from './types';

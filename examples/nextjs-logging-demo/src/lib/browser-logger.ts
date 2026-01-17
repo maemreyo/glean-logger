@@ -10,12 +10,16 @@ import { setBrowserLogger } from '@zaob/glean-logger/react';
 import {
   installInterceptors,
   uninstallInterceptors,
+  getClientTransport,
+  createClientTransport,
+  type ClientTransport,
   type IBrowserLogger,
-  type BrowserLogEntry,
   type LogContext,
   type LogLevel,
+  type ClientLogEntry,
+  getBatchingConfig,
+  getTransportConfig,
 } from '@zaob/glean-logger';
-import { getTransportConfig, getBatchingConfig } from '@zaob/glean-logger';
 import { isLoggingEnabled, isBrowserExceptionsEnabled } from './config';
 
 // ============================================================================
@@ -34,21 +38,23 @@ export interface BrowserLogInput {
 // ============================================================================
 
 class BrowserLoggerImpl implements IBrowserLogger {
-  private logs: BrowserLogEntry[] = [];
+  private logs: ClientLogEntry[] = [];
+  private transport: ClientTransport;
 
   constructor() {
-    // Initialize with default implementation
+    // Initialize ClientTransport for sending logs to server
+    this.transport = getClientTransport();
   }
 
   /**
-   * Add a log entry to storage
+   * Add a log entry to storage and send to server via transport
    */
-  private addLog(
+  private async addLog(
     level: 'debug' | 'info' | 'warn' | 'error',
     message: string,
     context?: LogContext
-  ): void {
-    const entry: BrowserLogEntry = {
+  ): Promise<void> {
+    const entry: ClientLogEntry = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       level,
@@ -56,6 +62,17 @@ class BrowserLoggerImpl implements IBrowserLogger {
       context: context ?? {},
     };
     this.logs.push(entry);
+
+    // Convert to ClientLogEntry and send to server via transport
+    const clientEntry: ClientLogEntry = {
+      id: entry.id,
+      timestamp: entry.timestamp,
+      level: entry.level,
+      message: entry.message,
+      context: entry.context,
+      source: 'console',
+    };
+    await this.transport.send(clientEntry);
   }
 
   debug(message: string, context?: LogContext): void {
@@ -98,7 +115,7 @@ class BrowserLoggerImpl implements IBrowserLogger {
     }
   }
 
-  getStoredLogs(): BrowserLogEntry[] {
+  getStoredLogs(): ClientLogEntry[] {
     return [...this.logs];
   }
 
@@ -107,9 +124,8 @@ class BrowserLoggerImpl implements IBrowserLogger {
   }
 
   async flush(): Promise<void> {
-    // The actual flush is handled by ClientTransport
-    // This is a placeholder that returns immediately
-    return Promise.resolve();
+    // Flush via ClientTransport
+    await this.transport.flush();
   }
 }
 

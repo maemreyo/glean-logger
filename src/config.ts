@@ -69,7 +69,7 @@ export const DEFAULT_RETRY: RetryConfig = {
  * Default transport configuration
  */
 const DEFAULT_TRANSPORT: Omit<TransportConfig, 'batch' | 'retry'> = {
-  endpoint: '/api/logger',
+  endpoint: '/api/logs',
 };
 
 /**

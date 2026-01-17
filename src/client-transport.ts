@@ -75,8 +75,22 @@ export class ClientTransport {
    * @param config - Optional transport configuration (uses defaults if not provided)
    */
   constructor(config?: Partial<TransportConfig>) {
-    // Merge provided config with defaults
-    const defaultConfig = getTransportConfig();
+    // In browser environment, use hardcoded 'immediate' mode for reliable log submission
+    const isBrowserEnv = typeof window !== 'undefined' && typeof fetch === 'function';
+
+    const browserConfig: TransportConfig = {
+      endpoint: '/api/logs',
+      batch: { mode: 'immediate', timeIntervalMs: 3000, countThreshold: 10 },
+      retry: {
+        enabled: true,
+        maxRetries: 3,
+        initialDelayMs: 1000,
+        maxDelayMs: 30000,
+        backoffMultiplier: 2,
+      },
+    };
+
+    const defaultConfig = isBrowserEnv ? browserConfig : getTransportConfig();
     this.config = {
       endpoint: config?.endpoint ?? defaultConfig.endpoint,
       batch: {
@@ -126,6 +140,14 @@ export class ClientTransport {
       return;
     }
 
+    console.debug('[ClientTransport] Adding entry to buffer:', {
+      id: entry.id,
+      level: entry.level,
+      message: entry.message.substring(0, 50),
+      bufferSize: this.buffer.length + 1,
+      mode: this.config.batch.mode,
+    });
+
     this.buffer.push(entry);
 
     // Handle different batching modes
@@ -155,8 +177,16 @@ export class ClientTransport {
     this.buffer = [];
     this.sending = true;
 
+    console.debug('[ClientTransport] Flushing batch:', {
+      count: batch.length,
+      endpoint: this.config.endpoint,
+    });
+
     try {
       await this.sendWithRetry(batch);
+      console.debug('[ClientTransport] Flush complete');
+    } catch (error) {
+      console.error('[ClientTransport] Flush failed:', error);
     } finally {
       this.sending = false;
       // Restart timer for time-based batching

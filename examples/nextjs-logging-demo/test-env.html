@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>Test Env Vars</h1>
+<script>
+console.log('typeof process:', typeof process);
+console.log('process.env:', typeof process !== 'undefined' ? process.env : 'undefined');
+console.log('NEXT_PUBLIC_LOGGER_BATCH_MODE:', typeof process !== 'undefined' && process.env ? process.env.NEXT_PUBLIC_LOGGER_BATCH_MODE : 'not found');
+</script>
+</body>
+</html>

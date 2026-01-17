@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
     const { logs } = body as {
       logs: Array<{
         id: string;
-        timestamp: string;
+        timestamp: number;
         level: string;
-        type: string;
+        source: 'console' | 'api' | 'error';
         message: string;
-        metadata?: Record<string, unknown>;
+        context?: Record<string, unknown>;
       }>;
     };
 
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
         const logData = {
           browserId: logEntry.id,
           browserTimestamp: logEntry.timestamp,
-          browserType: logEntry.type,
-          ...logEntry.metadata,
+          browserSource: logEntry.source,
+          ...logEntry.context,
         };
 
         switch (logEntry.level) {
@@ -46,6 +46,9 @@ export async function POST(request: NextRequest) {
             serverLogger.warn(logEntry.message, logData);
             break;
           case 'error':
+            serverLogger.error(logEntry.message, logData);
+            break;
+          case 'fatal':
             serverLogger.error(logEntry.message, logData);
             break;
         }
