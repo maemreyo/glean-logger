@@ -71,6 +71,12 @@ const state: InterceptorState = {
 };
 
 /**
+ * Guard to prevent re-entrant logging (infinite loop)
+ * When true, we're inside an interceptor and should not call logger methods
+ */
+let inInterceptor = false;
+
+/**
  * Convert console arguments to a log message and context
  */
 function argsToMessageAndContext(args: unknown[]): { message: string; context: LogContext } {
@@ -129,32 +135,46 @@ function createConsoleInterceptor(
   originalFn: (...args: unknown[]) => void
 ): (...args: unknown[]) => void {
   return (...args: unknown[]): void => {
-    // Call original console method
+    // Call original console method first
     originalFn(...args);
 
-    // Also log through our logger if active
-    if (state.active && state.logger) {
-      const { message, context } = argsToMessageAndContext(args);
-      const logContext: LogContext = {
-        ...context,
-        source: 'console',
-        consoleMethod: level,
-      };
+    // Guard against re-entrant logging to prevent infinite loop
+    // If we're already in an interceptor, don't call the logger again
+    if (inInterceptor) {
+      return;
+    }
 
-      switch (level) {
-        case 'debug':
-          state.logger.debug(message, logContext);
-          break;
-        case 'info':
-          state.logger.info(message, logContext);
-          break;
-        case 'warn':
-          state.logger.warn(message, logContext);
-          break;
-        case 'error':
-          state.logger.error(message, logContext);
-          break;
+    // Set guard flag before calling logger
+    inInterceptor = true;
+
+    try {
+      // Also log through our logger if active
+      if (state.active && state.logger) {
+        const { message, context } = argsToMessageAndContext(args);
+        const logContext: LogContext = {
+          ...context,
+          source: 'console',
+          consoleMethod: level,
+        };
+
+        switch (level) {
+          case 'debug':
+            state.logger.debug(message, logContext);
+            break;
+          case 'info':
+            state.logger.info(message, logContext);
+            break;
+          case 'warn':
+            state.logger.warn(message, logContext);
+            break;
+          case 'error':
+            state.logger.error(message, logContext);
+            break;
+        }
       }
+    } finally {
+      // Always reset guard flag
+      inInterceptor = false;
     }
   };
 }
