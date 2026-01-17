@@ -259,3 +259,63 @@ When integrating glean-logger into a user project:
 - [QUICK_START.md](QUICK_START.md) - Comprehensive guide
 - [README.md](README.md) - Full documentation
 - [src/](src/) - Source code with JSDoc
+
+---
+
+## 🤖 For AI Agents: Fetch This Guide
+
+Use this prompt to fetch and use this documentation:
+
+### Option 1: Raw GitHub URL
+
+```
+https://raw.githubusercontent.com/maemreyo/glean-logger/main/AGENT_GUIDE.md
+```
+
+### Option 2: GitHub CLI
+
+```bash
+gh api repos/maemreyo/glean-logger/contents/AGENT_GUIDE.md --jq '.content' | base64 -d
+```
+
+### 📝 Copy-Paste Prompt
+
+```
+You are integrating @zaob/glean-logger into a user project.
+
+First, fetch the agent guide:
+- URL: https://raw.githubusercontent.com/maemreyo/glean-logger/main/AGENT_GUIDE.md
+
+Follow the "Verification Checklist" section to:
+1. Create src/lib/logger.ts with `enabled: process.env.NODE_ENV !== 'production'`
+2. Configure .env.local (enabled) and .env.production (disabled)
+3. Use @zaob/glean-logger/browser for client components
+4. Use @zaob/glean-logger (auto-detect) for universal code
+5. Use measure() for async timing
+6. Check for null when using child() (server-only)
+
+DO NOT:
+- Enable logging in production
+- Use createLoggedFetch in browser
+- Write files in serverless/Cloudflare environments
+
+Key patterns from the guide:
+- Local dev only: logger({ enabled: process.env.NODE_ENV !== 'production' })
+- Client: import { logger } from '@zaob/glean-logger/browser'
+- Timing: const { result, duration } = await measure('label', async () => {...})
+- Child logger: const apiLog = child({ module: 'api' }); if (apiLog) {...}
+```
+
+---
+
+## 📁 Documentation Files Available
+
+| File               | URL                        | Purpose              |
+| ------------------ | -------------------------- | -------------------- |
+| **AGENT_GUIDE.md** | `/main/AGENT_GUIDE.md`     | AI Agent integration |
+| GETTING_STARTED.md | `/main/GETTING_STARTED.md` | Human quick start    |
+| QUICK_START.md     | `/main/QUICK_START.md`     | Human comprehensive  |
+| README.md          | `/main/README.md`          | Overview             |
+| examples/          | `/main/examples/`          | Code examples        |
+
+**Latest version:** `https://raw.githubusercontent.com/maemreyo/glean-logger/main/AGENT_GUIDE.md`
