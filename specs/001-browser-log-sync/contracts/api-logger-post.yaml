@@ -1,0 +1,97 @@
+openapi: 3.0.0
+info:
+  title: @zaob/glean-logger Browser Log API
+  version: 1.2.0
+  description: API endpoint for receiving browser logs from client transport
+servers:
+  - url: http://localhost:3000
+    description: Development server (configurable)
+paths:
+  /api/logger:
+    post:
+      summary: Receive batched browser logs
+      operationId: receiveBrowserLogs
+      tags:
+        - logging
+        - browser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - logs
+              properties:
+                logs:
+                  type: array
+                  items:
+                    type: object
+                  minItems: 1
+      responses:
+        '200':
+          description: Logs successfully written to file
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+        '400':
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+components:
+  schemas:
+    BrowserLogEntry:
+      type: object
+      description: Browser log entry
+      required:
+        - id
+        - timestamp
+        - level
+        - message
+        - source
+      properties:
+        id:
+          type: string
+          format: uuid
+        timestamp:
+          type: integer
+          format: int64
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+        message:
+          type: string
+        source:
+          type: string
+          enum:
+            - console
+            - api
+            - error
+        context:
+          type: object
+          description: Arbitrary metadata
+          additionalProperties: true
