@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: Omit<LoggerConfig, 'level'> = {
 /**
  * Default batching configuration
  */
-const DEFAULT_BATCHING: BatchingConfig = {
+export const DEFAULT_BATCHING: BatchingConfig = {
   mode: 'time',
   timeIntervalMs: 3000, // 3 seconds
   countThreshold: 10,
@@ -57,7 +57,7 @@ const DEFAULT_BATCHING: BatchingConfig = {
 /**
  * Default retry configuration
  */
-const DEFAULT_RETRY: RetryConfig = {
+export const DEFAULT_RETRY: RetryConfig = {
   enabled: true,
   maxRetries: 3,
   initialDelayMs: 1000, // 1 second
