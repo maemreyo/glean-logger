@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/maemreyo/glean-logger/compare/v1.1.0...v1.1.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* use Node.js 20 and --legacy-peer-deps in CI workflow ([05c4a83](https://github.com/maemreyo/glean-logger/commit/05c4a83c96490471784db6df52f1e535cba0873b))
+
 # [1.1.0](https://github.com/maemreyo/glean-logger/compare/v1.0.0...v1.1.0) (2026-01-16)
 
 
