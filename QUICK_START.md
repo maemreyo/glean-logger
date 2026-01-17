@@ -12,6 +12,493 @@ npm install @zaob/glean-logger
 
 ---
 
+## 💻 Local Development Only (Next.js)
+
+Use glean-logger for debugging in development with zero production overhead. Perfect for serverless and Cloudflare Workers deployments where file logging isn't possible.
+
+### Why Use Glean Logger Only for Local Development?
+
+- **Debug during development**: Get detailed logs with file rotation and colored console output
+- **Zero overhead in production**: Completely disabled logging with no performance impact
+- **Safe for serverless**: Works perfectly with Vercel, Netlify, Cloudflare Workers, and other serverless platforms
+- **No filesystem writes in production**: Ideal for environments without persistent disk access
+
+### Quick Setup for Local-Only Logging
+
+Copy this configuration for Next.js local development with automatic production disabling:
+
+```typescript
+// src/lib/logger.ts
+import { logger, isDevelopment, isProduction } from '@zaob/glean-logger';
+
+// Only enable logging in development
+const log = logger({
+  name: 'my-app',
+  enabled: isDevelopment(), // false in production
+});
+
+export { log, isDevelopment, isProduction };
+```
+
+```typescript
+// src/app/api/example/route.ts
+import { NextResponse } from 'next/server';
+import { measure } from '@zaob/glean-logger';
+import { log } from '@/lib/logger';
+
+export async function GET() {
+  // Performance tracking
+  const { result, duration } = await measure('fetch-data', async () => {
+    // Your async logic here
+    return await fetchDataFromDB();
+  });
+
+  log.info('Data fetched', { count: result.length, duration: `${duration.toFixed(2)}ms` });
+
+  return NextResponse.json(result);
+}
+```
+
+```bash
+# .env.local (development only - DO NOT commit)
+NEXT_PUBLIC_LOG_ENABLED=true
+NODE_ENV=development
+```
+
+```bash
+# .env.production (Vercel/Netlify/Cloudflare)
+NODE_ENV=production
+NEXT_PUBLIC_LOG_ENABLED=false  # or omit this entirely
+```
+
+### Verify It's Working Locally
+
+```bash
+# Start development server
+npm run dev
+
+# You should see logs in terminal:
+# 2024-01-16T10:30:00.000Z [info] Data fetched count=10 duration=123.45ms
+```
+
+```bash
+# Check logs directory (local development only)
+ls -la _logs/
+# combined.2024-01-16.log
+# api.2024-01-16.log
+# error.2024-01-16.log
+```
+
+### Configuration Options
+
+#### Option 1: Environment Variable Control
+
+```typescript
+// src/lib/logger.ts
+const log = logger({
+  name: 'my-app',
+  enabled: process.env.NODE_ENV === 'development', // Only log in dev
+});
+```
+
+**Environment variables:**
+
+```env
+# Development (.env.local)
+NODE_ENV=development
+NEXT_PUBLIC_LOG_ENABLED=true
+
+# Production (.env.production)
+NODE_ENV=production
+NEXT_PUBLIC_LOG_ENABLED=false
+```
+
+#### Option 2: Runtime Check
+
+```typescript
+// src/lib/logger.ts
+import { isDevelopment } from '@zaob/glean-logger';
+
+const log = logger({
+  name: 'my-app',
+  enabled: isDevelopment(), // Returns true only in dev
+});
+```
+
+#### Option 3: Conditional Import
+
+```typescript
+// src/app/api/route.ts
+const log =
+  process.env.NODE_ENV === 'development'
+    ? (await import('@zaob/glean-logger')).then(m => m.logger({ name: 'api' }))
+    : null;
+
+// Use with guard
+if (log) {
+  log.info('This only logs in development');
+}
+```
+
+#### Option 4: Complete Disable
+
+```typescript
+// src/lib/logger.ts
+// Completely disable logging everywhere
+const log = logger({
+  name: 'my-app',
+  enabled: false, // Never logs
+});
+```
+
+### What Happens When Disabled?
+
+When logging is disabled (`enabled: false` or `NODE_ENV=production`):
+
+- **No console output**: All `log.info()`, `log.error()` calls become no-ops
+- **No filesystem writes**: No files created in `_logs/` directory
+- **No localStorage**: Browser doesn't store logs
+- **Zero performance impact**: Logging functions return immediately without processing
+- **No bundle size impact**: Tree-shaking removes Winston from production builds
+
+```typescript
+// Example: All of these are no-ops in production
+log.info('User signed in'); // Nothing happens
+log.error('API failed'); // Nothing happens
+await measure('query', fn); // Returns result without timing
+```
+
+### Local Development Features
+
+#### File Rotation for Logs
+
+In development, logs automatically rotate daily:
+
+```bash
+_logs/
+├── combined.2024-01-16.log    # All logs (debug+)
+├── api.2024-01-16.log         # API logs (info+)
+└── error.2024-01-16.log       # Errors only
+```
+
+**Configuration:**
+
+```typescript
+// Default rotation settings (configurable)
+const log = logger({
+  name: 'my-app',
+  level: 'debug', // debug | info | warn | error
+  // File rotation happens automatically
+  // - Max file size: 10MB (configurable via LOG_MAX_SIZE)
+  // - Retention: 14 days (configurable via LOG_MAX_FILES)
+});
+```
+
+#### Console Output with Colors
+
+Development console uses colored, readable format:
+
+```typescript
+// Development output
+2024-01-16T10:30:00.000Z [info] User signed in userId=123 email=user@example.com
+2024-01-16T10:30:01.000Z [error] API failed endpoint=/api/users error=timeout
+```
+
+#### Performance Tracking with `measure()`
+
+Track async operation timing in development:
+
+```typescript
+import { measure } from '@zaob/glean-logger';
+
+// Simple timing
+const { result, duration } = await measure('fetch-users', async () => {
+  return await db.users.findMany();
+});
+
+console.log(`Fetched ${result.length} users in ${duration}ms`);
+
+// In API routes
+export async function GET() {
+  const { result, duration } = await measure('api-call', async () => {
+    return await externalService.getData();
+  });
+
+  log.info('API call completed', {
+    service: 'external-service',
+    duration: `${duration.toFixed(2)}ms`,
+    recordCount: result.length,
+  });
+
+  return NextResponse.json(result);
+}
+```
+
+**Note**: In production, `measure()` still returns the result but skips timing logic for zero overhead.
+
+#### Child Loggers for Context
+
+Server-side only: Create loggers with persistent context:
+
+```typescript
+import { child } from '@zaob/glean-logger';
+
+// Create child logger with context
+const apiLog = child({
+  module: 'api',
+  version: '1.0',
+  environment: 'development',
+});
+
+// All logs include this context automatically
+apiLog.info('Request received', { endpoint: '/api/users' });
+// Output: 2024-01-16T10:30:00.000Z [info] Request received module=api version=1.0 endpoint=/api/users
+
+// Create nested child logger
+const userApiLog = apiLog.child({ route: '/users' });
+userApiLog.info('User fetched', { userId: 123 });
+// Output: 2024-01-16T10:30:01.000Z [info] User fetched module=api version=1.0 route=/users userId=123
+```
+
+**Browser limitation**: Child loggers are server-only (require Winston). Use regular logger in client components.
+
+### Production Safety
+
+#### Confirm Logging is Disabled in Production
+
+```typescript
+// src/lib/logger.ts
+import { isDevelopment, isProduction } from '@zaob/glean-logger';
+
+if (isProduction()) {
+  console.log('✅ Production mode - Logging is DISABLED');
+}
+
+const log = logger({
+  name: 'my-app',
+  enabled: isDevelopment(),
+});
+
+export { log };
+```
+
+```bash
+# In production build
+NODE_ENV=production npm run build
+
+# Check bundle size (should be smaller without Winston)
+ls -lh .next/static/chunks/
+
+# Deploy to Vercel/Netlify
+vercel --prod
+```
+
+#### No LocalStorage Accumulation
+
+When disabled in production:
+
+- **No `localStorage` writes**: Browser logger checks `isLoggingEnabled()` before writing
+- **No quota issues**: 5MB localStorage limit never touched
+- **No stale data**: No cleanup required for old log entries
+
+```typescript
+// Browser code - production safe
+import { logger } from '@zaob/glean-logger';
+
+const log = logger({
+  name: 'my-app',
+  enabled: isDevelopment(), // false in production
+});
+
+// In production, this is a no-op
+log.info('Button clicked', { buttonId: 'submit' });
+// Nothing written to localStorage, nothing logged to console
+```
+
+#### No Filesystem Writes
+
+When disabled in production:
+
+- **No `_logs/` directory created**: File transport is skipped
+- **No disk I/O**: Zero filesystem operations
+- **Safe for serverless**: Works on platforms without file system access
+
+```typescript
+// Server code - production safe
+import { logger } from '@zaob/glean-logger';
+
+const log = logger({
+  name: 'api',
+  enabled: process.env.NODE_ENV === 'development',
+});
+
+// In production, this is a no-op
+log.info('API request', { path: '/api/users' });
+// No files written, no disk operations
+```
+
+#### No Performance Impact
+
+Benchmark results (disabled vs enabled):
+
+```typescript
+// Disabled logging (production)
+log.info('test'); // ~0.001ms (no-op)
+await measure('fn', fn); // ~0.001ms (no timing)
+
+// Enabled logging (development)
+log.info('test'); // ~0.1ms (console + file write)
+await measure('fn', fn); // ~0.1ms (timing + logging)
+```
+
+### Troubleshooting
+
+#### Verify Local Logging is Working
+
+```bash
+# 1. Check environment variables
+echo $NODE_ENV  # Should be: development
+echo $NEXT_PUBLIC_LOG_ENABLED  # Should be: true (or unset)
+
+# 2. Run development server
+npm run dev
+
+# 3. Trigger a log
+# Visit: http://localhost:3000
+# You should see colored logs in terminal
+
+# 4. Check log files
+ls -la _logs/
+cat _logs/combined.$(date +%Y-%m-%d).log
+```
+
+```typescript
+// Test logging programmatically
+import { log, isDevelopment } from '@/lib/logger';
+
+console.log('Environment:', process.env.NODE_ENV);
+console.log('isDevelopment():', isDevelopment());
+console.log('Logging enabled:', log ? 'YES' : 'NO');
+
+log.info('Test log', { timestamp: Date.now() });
+// Should see this in terminal
+```
+
+#### Check Logs Are Not Appearing in Production
+
+```bash
+# 1. Verify production environment
+cat .env.production
+NODE_ENV=production
+NEXT_PUBLIC_LOG_ENABLED=false
+
+# 2. Build production bundle
+npm run build
+
+# 3. Check bundle size
+ls -lh .next/static/chunks/
+# Should NOT see winston in chunks
+
+# 4. Test production server
+npm run start
+# Should NOT see any logs in terminal
+```
+
+```typescript
+// Add runtime check
+import { isLoggingEnabled } from '@zaob/glean-logger';
+
+if (isLoggingEnabled()) {
+  console.warn('⚠️  WARNING: Logging is enabled in production!');
+}
+
+// Log a test message
+log.info('Test log');
+// If you see this in production, logging is NOT disabled
+```
+
+#### Common Mistakes to Avoid
+
+**Mistake 1: Committing `.env.local`**
+
+```bash
+# ❌ WRONG - Don't commit development env vars
+git add .env.local
+git commit -m "Add env vars"
+
+# ✅ CORRECT - Use .env.example
+cp .env.local .env.example
+# Edit .env.example to remove sensitive values
+git add .env.example
+git commit -m "Add env example"
+```
+
+**Mistake 2: Using Child Loggers in Client Components**
+
+```typescript
+// ❌ WRONG - child() is server-only
+// src/app/page.tsx
+'use client';
+import { child } from '@zaob/glean-logger';
+
+const log = child({ module: 'client' }); // Returns null in browser
+log.info('Test'); // Nothing happens, silent failure
+
+// ✅ CORRECT - Use regular logger
+('use client');
+import { logger } from '@zaob/glean-logger';
+
+const log = logger({ name: 'client' });
+log.info('Test'); // Works correctly
+```
+
+**Mistake 3: Forgetting `enabled` Option**
+
+```typescript
+// ❌ WRONG - Always logs in production
+const log = logger({ name: 'my-app' });
+// Will log in production, creating _logs/ directory
+
+// ✅ CORRECT - Explicitly disable in production
+const log = logger({
+  name: 'my-app',
+  enabled: process.env.NODE_ENV === 'development',
+});
+```
+
+**Mistake 4: Using `NEXT_PUBLIC_` in Server Code**
+
+```typescript
+// ❌ WRONG - Server can't access NEXT_PUBLIC_ vars directly
+const enabled = process.env.NEXT_PUBLIC_LOG_ENABLED; // undefined on server
+
+// ✅ CORRECT - Use NODE_ENV on server
+const enabled = process.env.NODE_ENV === 'development';
+
+// Or use helper
+import { isDevelopment } from '@zaob/glean-logger';
+const enabled = isDevelopment();
+```
+
+**Mistake 5: Not Tree-Shaking Winston**
+
+```typescript
+// ✅ GOOD - Tree-shaking removes Winston from client code
+import { logger } from '@zaob/glean-logger';
+
+// Browser build checks environment
+if (typeof window !== 'undefined') {
+  // Uses browser logger (no Winston)
+  return createBrowserLogger(...);
+}
+
+// ✅ GOOD - Dynamic import for server-only code
+import { loggedFetch } from '@zaob/glean-logger';
+// loggedFetch returns no-op in browser
+```
+
+---
+
 ## 📦 Common Patterns (Copy & Paste)
 
 ### 1. Basic Logging (Works Everywhere)
