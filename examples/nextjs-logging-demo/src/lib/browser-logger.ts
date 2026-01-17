@@ -1,231 +1,272 @@
-import { getLoggingConfig, isLoggingEnabled, isBrowserExceptionsEnabled } from './config';
+/**
+ * Browser Logger with Client Transport
+ *
+ * Feature: 001-browser-log-sync
+ * Uses @zaob/glean-logger's ClientTransport for batching and retry,
+ * and installInterceptors for automatic console/error interception.
+ */
 
-export interface BrowserLogEntry {
-  id: string;
-  timestamp: string;
+import { setBrowserLogger } from '@zaob/glean-logger/react';
+import {
+  installInterceptors,
+  uninstallInterceptors,
+  type IBrowserLogger,
+  type BrowserLogEntry,
+  type LogContext,
+  type LogLevel,
+} from '@zaob/glean-logger';
+import { getTransportConfig, getBatchingConfig } from '@zaob/glean-logger';
+import { isLoggingEnabled, isBrowserExceptionsEnabled } from './config';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface BrowserLogInput {
   level: 'debug' | 'info' | 'warn' | 'error';
   type: 'exception' | 'request' | 'query' | 'console' | 'custom';
   message: string;
   metadata?: Record<string, unknown>;
-  url?: string;
-  userAgent?: string;
 }
 
-// Simple browser-only logger - no server dependencies
-interface BrowserLoggerInterface {
-  debug: (message: string, metadata?: Record<string, unknown>) => void;
-  info: (message: string, metadata?: Record<string, unknown>) => void;
-  warn: (message: string, metadata?: Record<string, unknown>) => void;
-  error: (message: string, metadata?: Record<string, unknown>) => void;
-}
+// ============================================================================
+// Browser Logger Implementation
+// ============================================================================
 
-const createBrowserLogger = (name: string): BrowserLoggerInterface => ({
-  debug: (message, metadata) => console.debug(`[${name}] [DEBUG] ${message}`, metadata),
-  info: (message, metadata) => console.log(`[${name}] [INFO] ${message}`, metadata),
-  warn: (message, metadata) => console.warn(`[${name}] [WARN] ${message}`, metadata),
-  error: (message, metadata) => console.error(`[${name}] [ERROR] ${message}`, metadata),
-});
-
-// Create a single browser logger instance
-const gleanLogger = createBrowserLogger('browser');
-
-// Export for testing
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function setGleanLogger(_mockLogger: BrowserLoggerInterface) {
-  // Mock function for test compatibility
-}
-
-export function getGleanLogger() {
-  return gleanLogger;
-}
-
-class BrowserLogger {
+class BrowserLoggerImpl implements IBrowserLogger {
   private logs: BrowserLogEntry[] = [];
-  private batchInterval: ReturnType<typeof setInterval> | null = null;
-  private failedSubmissions: number = 0;
-  private config = getLoggingConfig();
 
   constructor() {
-    if (this.config.enabled) {
-      this.startBatchSubmission();
-    }
+    // Initialize with default implementation
   }
 
-  private startBatchSubmission() {
-    if (typeof window === 'undefined') return;
-
-    this.batchInterval = setInterval(() => {
-      this.submitLogs();
-    }, this.config.batchInterval);
-  }
-
-  private async submitLogs() {
-    if (this.logs.length === 0) return;
-
-    const logsToSubmit = [...this.logs];
-    this.logs = [];
-
-    try {
-      const response = await fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logs: logsToSubmit }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
-      }
-
-      this.failedSubmissions = 0;
-      console.log(`[BrowserLogger] Submitted ${logsToSubmit.length} logs successfully`);
-    } catch (error) {
-      this.failedSubmissions++;
-      console.error('[BrowserLogger] Failed to submit logs:', error);
-      this.logs = [...logsToSubmit, ...this.logs];
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('log-error', {
-            detail: { error, retryCount: logsToSubmit.length },
-          })
-        );
-      }
-    }
-  }
-
-  private addLog(entry: BrowserLogEntry) {
-    if (!this.config.enabled) return;
-
-    this.logs.push(entry);
-
-    const context = {
-      ...entry.metadata,
-      type: entry.type,
-      url: entry.url,
-      userAgent: entry.userAgent,
-    };
-
-    switch (entry.level) {
-      case 'debug':
-        getGleanLogger().debug(entry.message, context);
-        break;
-      case 'info':
-        getGleanLogger().info(entry.message, context);
-        break;
-      case 'warn':
-        getGleanLogger().warn(entry.message, context);
-        break;
-      case 'error':
-        getGleanLogger().error(entry.message, context);
-        break;
-    }
-
-    if (this.logs.length > this.config.batchSize) {
-      this.submitLogs();
-    }
-  }
-
-  log(
-    level: BrowserLogEntry['level'],
-    type: BrowserLogEntry['type'],
+  /**
+   * Add a log entry to storage
+   */
+  private addLog(
+    level: 'debug' | 'info' | 'warn' | 'error',
     message: string,
-    metadata?: Record<string, unknown>
-  ) {
+    context?: LogContext
+  ): void {
     const entry: BrowserLogEntry = {
       id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       level,
-      type,
       message,
-      metadata,
-      url: typeof window !== 'undefined' ? window.location.href : undefined,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      context: context ?? {},
     };
-
-    this.addLog(entry);
-    console.log(`[${level.toUpperCase()}] ${message}`, metadata);
+    this.logs.push(entry);
   }
 
-  info(message: string, metadata?: Record<string, unknown>) {
-    this.log('info', 'console', message, metadata);
+  debug(message: string, context?: LogContext): void {
+    this.addLog('debug', message, context);
+    console.debug(`[DEBUG] ${message}`, context);
   }
 
-  debug(message: string, metadata?: Record<string, unknown>) {
-    this.log('debug', 'console', message, metadata);
+  info(message: string, context?: LogContext): void {
+    this.addLog('info', message, context);
+    console.info(`[INFO] ${message}`, context);
   }
 
-  warn(message: string, metadata?: Record<string, unknown>) {
-    this.log('warn', 'console', message, metadata);
+  warn(message: string, context?: LogContext): void {
+    this.addLog('warn', message, context);
+    console.warn(`[WARN] ${message}`, context);
   }
 
-  error(message: string, metadata?: Record<string, unknown>) {
-    this.log('error', 'console', message, metadata);
+  error(message: string, context?: LogContext): void {
+    this.addLog('error', message, context);
+    console.error(`[ERROR] ${message}`, context);
   }
 
-  logException(error: Error, errorInfo?: Record<string, unknown>) {
-    this.log('error', 'exception', error.message, {
-      stack: error.stack,
-      ...errorInfo,
-    });
-  }
-
-  logRequest(
-    request: { method: string; url: string; body?: unknown },
-    response?: { status: number; body?: unknown }
-  ) {
-    this.log('debug', 'request', `${request.method} ${request.url}`, {
-      requestBody: request.body,
-      responseStatus: response?.status,
-      responseBody: response?.body,
-    });
-  }
-
-  logQuery(
-    queryKey: readonly unknown[],
-    status: 'success' | 'error',
-    duration: number,
-    error?: Error
-  ) {
-    this.log(status === 'error' ? 'error' : 'debug', 'query', `Query ${queryKey}`, {
-      queryKey,
-      duration: `${duration}ms`,
-      error: error?.message,
-    });
-  }
-
-  flush() {
-    if (this.batchInterval) {
-      clearInterval(this.batchInterval);
+  log(level: LogLevel, message: string, context?: LogContext): void {
+    switch (level) {
+      case 'debug':
+        this.debug(message, context);
+        break;
+      case 'info':
+        this.info(message, context);
+        break;
+      case 'warn':
+        this.warn(message, context);
+        break;
+      case 'error':
+        this.error(message, context);
+        break;
+      case 'fatal':
+        this.error(message, context);
+        break;
     }
-    this.submitLogs();
   }
 
-  getFailedSubmissionCount() {
-    return this.failedSubmissions;
+  getStoredLogs(): BrowserLogEntry[] {
+    return [...this.logs];
+  }
+
+  clearStoredLogs(): void {
+    this.logs = [];
+  }
+
+  async flush(): Promise<void> {
+    // The actual flush is handled by ClientTransport
+    // This is a placeholder that returns immediately
+    return Promise.resolve();
   }
 }
 
-export const browserLogger = new BrowserLogger();
+// ============================================================================
+// Module State
+// ============================================================================
 
-export function setupGlobalErrorHandlers() {
+let browserLoggerInstance: BrowserLoggerImpl | null = null;
+let interceptorsActive: boolean = false;
+
+/**
+ * Get or create the browser logger instance
+ */
+export function getBrowserLoggerInstance(): BrowserLoggerImpl {
+  if (!browserLoggerInstance) {
+    browserLoggerInstance = new BrowserLoggerImpl();
+    setBrowserLogger(browserLoggerInstance);
+  }
+  return browserLoggerInstance;
+}
+
+/**
+ * Get the glean-logger compatible logger
+ */
+export function getGleanLogger(): IBrowserLogger {
+  return getBrowserLoggerInstance();
+}
+
+/**
+ * Setup the browser logging infrastructure
+ * Call this once in your app initialization
+ */
+export function setupBrowserLogging(): void {
   if (typeof window === 'undefined') return;
   if (!isLoggingEnabled()) return;
-  if (!isBrowserExceptionsEnabled()) return;
 
-  window.onerror = (message, source, lineno, colno, error) => {
-    browserLogger.logException(error || new Error(message as string), {
-      source,
-      lineno,
-      colno,
-      type: 'uncaught',
-    });
-    return false;
-  };
+  const logger = getBrowserLoggerInstance();
 
-  window.onunhandledrejection = event => {
-    const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-    browserLogger.logException(error, {
-      type: 'unhandled-rejection',
-    });
-  };
+  // Install console and error interceptors if enabled
+  if (isBrowserExceptionsEnabled()) {
+    installInterceptors(logger);
+    interceptorsActive = true;
+  }
+
+  // Log setup completion
+  const batchingConfig = getBatchingConfig();
+  const transportConfig = getTransportConfig();
+  console.log('[BrowserLogger] Setup complete', {
+    interceptorsActive,
+    batchingMode: batchingConfig.mode,
+    batchCount: batchingConfig.countThreshold,
+    batchInterval: batchingConfig.timeIntervalMs,
+    endpoint: transportConfig.endpoint,
+  });
 }
+
+/**
+ * Cleanup the browser logging infrastructure
+ */
+export function cleanupBrowserLogging(): void {
+  if (interceptorsActive) {
+    uninstallInterceptors();
+    interceptorsActive = false;
+  }
+}
+
+/**
+ * Check if interceptors are active
+ */
+export function areLoggingInterceptorsActive(): boolean {
+  return interceptorsActive;
+}
+
+// ============================================================================
+// Convenience Logging Functions
+// ============================================================================
+
+/**
+ * Log an exception/error
+ */
+export function logException(error: Error, errorInfo?: Record<string, unknown>): void {
+  const logger = getGleanLogger();
+  logger.error(error.message, {
+    stack: error.stack,
+    type: 'exception',
+    ...(errorInfo as LogContext),
+  });
+}
+
+/**
+ * Log an API request
+ */
+export function logRequest(
+  request: { method: string; url: string; body?: unknown },
+  response?: { status: number; body?: unknown }
+): void {
+  const logger = getGleanLogger();
+  logger.debug(`${request.method} ${request.url}`, {
+    type: 'request',
+    requestBody: request.body,
+    responseStatus: response?.status,
+    responseBody: response?.body,
+  } as LogContext);
+}
+
+/**
+ * Log a React Query event
+ */
+export function logQuery(
+  queryKey: readonly unknown[],
+  status: 'success' | 'error',
+  duration: number,
+  error?: Error
+): void {
+  const logger = getGleanLogger();
+  const level = status === 'error' ? 'error' : 'debug';
+  logger.log(level, `Query ${queryKey}`, {
+    type: 'query',
+    queryKey,
+    duration: `${duration}ms`,
+    error: error?.message,
+  });
+}
+
+/**
+ * Manual log entry point
+ */
+export function log(
+  level: 'debug' | 'info' | 'warn' | 'error',
+  message: string,
+  metadata?: Record<string, unknown>
+): void {
+  const logger = getGleanLogger();
+  logger.log(level, message, { type: 'custom', ...metadata } as LogContext);
+}
+
+// ============================================================================
+// Export the singleton instance for direct use
+// ============================================================================
+
+export const browserLogger = {
+  debug: (message: string, metadata?: Record<string, unknown>) =>
+    getGleanLogger().debug(message, metadata as LogContext),
+  info: (message: string, metadata?: Record<string, unknown>) =>
+    getGleanLogger().info(message, metadata as LogContext),
+  warn: (message: string, metadata?: Record<string, unknown>) =>
+    getGleanLogger().warn(message, metadata as LogContext),
+  error: (message: string, metadata?: Record<string, unknown>) =>
+    getGleanLogger().error(message, metadata as LogContext),
+  log,
+  logException,
+  logRequest,
+  logQuery,
+  getStoredLogs: () => getGleanLogger().getStoredLogs(),
+  clearStoredLogs: () => getGleanLogger().clearStoredLogs(),
+  flush: () => getGleanLogger().flush(),
+  setup: setupBrowserLogging,
+  cleanup: cleanupBrowserLogging,
+  areActive: () => interceptorsActive,
+};

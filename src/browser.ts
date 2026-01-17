@@ -35,8 +35,14 @@
  * - Persists logs to localStorage with quota management
  */
 
+import { getClientTransport, ClientTransport } from './client-transport';
 import { shouldLog, isLoggingEnabled, getConfig } from './config';
 import { formatForConsole, formatForJson, formatBrowserLogEntry } from './formatters';
+import {
+  installInterceptors as setupInterceptors,
+  uninstallInterceptors as removeInterceptors,
+  areInterceptorsActive,
+} from './interceptors';
 import type {
   IBrowserLogger,
   LogContext,
@@ -46,12 +52,6 @@ import type {
   ClientLogEntry,
 } from './types';
 import { generateUUID, createUnixTimestamp, isBrowser } from './utils';
-import { getClientTransport, ClientTransport } from './client-transport';
-import {
-  installInterceptors as setupInterceptors,
-  uninstallInterceptors as removeInterceptors,
-  areInterceptorsActive,
-} from './interceptors';
 
 /**
  * Storage key for localStorage
@@ -107,7 +107,7 @@ class BrowserLoggerImpl implements IBrowserLogger {
   /**
    * Log a message at the specified level
    */
-  private log(level: LogLevel, message: string, context?: LogContext): void {
+  log(level: LogLevel, message: string, context?: LogContext): void {
     if (!isLoggingEnabled()) {
       return;
     }

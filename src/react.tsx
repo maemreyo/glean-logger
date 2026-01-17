@@ -36,7 +36,7 @@ import React, {
   useState,
   useEffect,
   useMemo,
-  type ReactNode,
+  type PropsWithChildren,
   type ErrorInfo,
   type ReactElement,
 } from 'react';
@@ -89,6 +89,7 @@ const defaultContext: LoggerContextType = {
     info: () => {},
     warn: () => {},
     error: () => {},
+    log: () => {},
     getStoredLogs: () => [],
     clearStoredLogs: () => {},
     flush: async () => {},
@@ -110,15 +111,13 @@ const LoggerContext = createContext<LoggerContextType>(defaultContext);
 /**
  * Props for LoggerProvider component
  */
-interface LoggerProviderProps {
-  /** Child components */
-  children: ReactNode;
+interface LoggerProviderProps extends PropsWithChildren {
   /** Optional custom logger instance */
   logger?: IBrowserLogger;
   /** Callback when error boundary catches an error */
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   /** Custom fallback UI for error boundary */
-  fallback?: ReactNode | ((error: Error, reset: () => void) => ReactNode);
+  fallback?: React.ReactNode | ((error: Error, reset: () => void) => React.ReactNode);
 }
 
 /**
@@ -256,13 +255,11 @@ interface LoggerErrorBoundaryState {
 /**
  * Props for LoggerErrorBoundary component
  */
-interface LoggerErrorBoundaryProps {
-  /** Child components */
-  children: ReactNode;
+interface LoggerErrorBoundaryProps extends PropsWithChildren {
   /** Callback when an error is caught */
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   /** Custom fallback UI */
-  fallback?: ReactNode | ((error: Error, reset: () => void) => ReactNode);
+  fallback?: React.ReactNode | ((error: Error, reset: () => void) => React.ReactNode);
   /** Logger instance to use for error logging */
   logger?: IBrowserLogger;
 }
@@ -350,7 +347,7 @@ export class LoggerErrorBoundary extends React.Component<
     });
   };
 
-  override render(): ReactNode {
+  override render(): React.ReactNode {
     const { hasError, error, errorInfo } = this.state;
     const { fallback, children } = this.props;
 
@@ -447,3 +444,6 @@ export function Logger(props: LoggerProviderProps): ReactElement {
 // ============================================================================
 
 export type { LoggerProviderProps, LoggerErrorBoundaryProps, LoggerContextType };
+
+// Re-export types for convenience
+export type { IBrowserLogger, BrowserLogEntry, LogContext } from './types';

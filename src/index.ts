@@ -43,8 +43,11 @@
 
 import { browserLogger, createBrowserLogger } from './browser';
 import { perf } from './timing';
-import type { LogContext, LogLevel, IBrowserLogger, IServerLogger } from './types';
+import type { LogContext, LogLevel, IBrowserLogger, IServerLogger, BrowserLogEntry } from './types';
 export { perf as performance } from './timing';
+
+// Re-export types for convenience
+export type { LogContext, LogLevel, IBrowserLogger, IServerLogger, BrowserLogEntry };
 
 let _serverLogger: IServerLogger | null = null;
 
@@ -248,3 +251,31 @@ export { ApiLoggerBuilder } from './http';
 export { createLoggedFetch } from './http';
 export { createApiLogger } from './http';
 export type { BodyLoggingConfig } from './types';
+
+// ============================================================================
+// Browser Log Sync Features (Feature: 001-browser-log-sync)
+// ============================================================================
+
+// Config exports for browser transport
+export {
+  getTransportConfig,
+  getBatchingConfig,
+  getRetryConfig,
+  DEFAULT_BATCHING,
+  DEFAULT_RETRY,
+} from './config';
+
+// Interceptor exports
+export {
+  installInterceptors,
+  uninstallInterceptors,
+  areInterceptorsActive,
+  getInterceptorLogger,
+} from './interceptors';
+
+// Client transport exports
+export {
+  getClientTransport,
+  createClientTransport,
+  type ClientTransport,
+} from './client-transport';

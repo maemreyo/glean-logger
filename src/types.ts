@@ -216,6 +216,8 @@ export interface IBrowserLogger {
   warn(message: string, context?: LogContext): void;
   /** Log an error message */
   error(message: string, context?: LogContext): void;
+  /** Log with specified level */
+  log(level: LogLevel, message: string, context?: LogContext): void;
   /** Get all stored logs from localStorage */
   getStoredLogs(): BrowserLogEntry[];
   /** Clear all stored logs from localStorage */
