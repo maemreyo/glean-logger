@@ -1,3 +1,15 @@
+# [Unreleased]
+
+### Features
+
+* **normalization:** add log normalization utilities (`normalizeBrowserLogEntry`, `serializeError`)
+* **browser:** implement reliable log transport with `mode: 'immediate'` default
+* **browser:** remove polluting internal debug logs from console
+
+### BREAKING CHANGES
+
+* **api:** remove `getBatchingConfig`, `getTransportConfig`, `getRetryConfig` from public exports. Use internal constants or `logger()` factory instead.
+
 # [1.2.0](https://github.com/maemreyo/glean-logger/compare/v1.1.1...v1.2.0) (2026-01-17)
 
 

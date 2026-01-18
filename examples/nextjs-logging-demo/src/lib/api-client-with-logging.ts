@@ -22,7 +22,6 @@ import type { paths } from './v1.d.ts';
 
 // ============================================================================
 // Glean Logger Imports - API Logging
-// ============================================================================
 
 import { ApiLoggerBuilder, createApiLogger, createLoggedFetch } from '@zaob/glean-logger';
 import { browserLogger } from '@/lib/browser-logger';

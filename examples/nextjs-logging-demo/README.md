@@ -31,6 +31,7 @@ This example implements a complete logging solution for Next.js applications:
 - **Multiple log files**: combined, api, error logs
 - **Console output**: Colored formatting in development
 - **Performance tracking**: Uses `measure()` for async operation timing
+- **React Context**: Uses `LoggerProvider` for server logger management
 
 ### 5. Environment-Based Configuration
 
@@ -46,13 +47,14 @@ This example implements a complete logging solution for Next.js applications:
 
 ## Architecture
 
-This demo showcases the `@zaob/glean-logger` package:
+This demo showcases `@zaob/glean-logger` package with deep `@zaob/glean-logger/react` integration:
 
 ```
 @zaob/glean-logger/
 ├── Browser (auto-detected)
 │   ├── Console output with colors
-│   └── localStorage persistence
+│   ├── localStorage persistence
+│   └── React Context & Hooks (via @zaob/glean-logger/react)
 │
 └── Server (auto-detected)
     ├── Winston with daily rotation
@@ -61,11 +63,60 @@ This demo showcases the `@zaob/glean-logger` package:
     └── Child loggers with context
 ```
 
+### React Integration (@zaob/glean-logger/react)
+
+The example now uses React context and hooks for browser logging:
+
+```tsx
+import { Logger, useLogger } from '@zaob/glean-logger/react';
+
+// Wrap app with Logger component (includes Provider + ErrorBoundary)
+<Logger>
+  <App />
+</Logger>;
+
+// Use logger in components with useLogger hook
+function MyComponent() {
+  const logger = useLogger();
+
+  const handleClick = () => {
+    logger.info('Button clicked', { buttonId: 'submit' });
+  };
+
+  return <button onClick={handleClick}>Click me</button>;
+}
+```
+
+**Available exports from `@zaob/glean-logger/react`**:
+
+| Export                | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `Logger`              | Combined Provider + Error Boundary               |
+| `LoggerProvider`      | React Context Provider                           |
+| `LoggerErrorBoundary` | Error Boundary with automatic logging            |
+| `useLogger()`         | Hook to access logger in components              |
+| `useLoggerContext()`  | Hook to access logger utilities (flush, getLogs) |
+
+@zaob/glean-logger/
+├── Browser (auto-detected)
+│ ├── Console output with colors
+│ └── localStorage persistence
+│
+└── Server (auto-detected)
+├── Winston with daily rotation
+├── Console + file transports
+├── Performance timing (measure())
+└── Child loggers with context
+
+```
+
 ### Browser→Server Log Flow
 
 ```
-Browser Events → browserLogger (batch + glean-logger) → /api/logs → serverLogger (glean-logger Winston) → _logs/
-```
+
+Browser Events → browserLogger (batch + glean-logger) → /api/logs → serverLogger (glean-logger Winston) → \_logs/
+
+````
 
 ## Quick Start
 
@@ -74,7 +125,7 @@ Browser Events → browserLogger (batch + glean-logger) → /api/logs → server
 ```bash
 cd examples/nextjs-logging-demo
 npm install
-```
+````
 
 ### 2. Enable Logging
 
@@ -410,34 +461,52 @@ const response = await fetch('/api/users');
 - openapi-fetch 0.13+
 - @zaob/glean-logger 1.0+
 
-## Refactoring to @zaob/glean-logger
+## React Integration with @zaob/glean-logger/react
 
-This demo was refactored to use `@zaob/glean-logger` instead of custom logging implementations:
+This demo now deeply integrates with `@zaob/glean-logger/react` for browser logging:
 
 ### What Changed
 
-| File                | Change                                                                |
-| ------------------- | --------------------------------------------------------------------- |
-| `server-logger.ts`  | Replaced custom Winston setup with `logger()` from glean-logger       |
-| `browser-logger.ts` | Integrated glean-logger for console/localStorage, kept batching layer |
-| `query-client.ts`   | Uses glean-logger instead of custom logging                           |
-| `api/logs/route.ts` | Uses `measure()` for performance tracking                             |
-| `api/demo/route.ts` | Uses `measure()` for performance tracking                             |
-
-### What Stayed the Same
-
-| File                | Reason                                            |
-| ------------------- | ------------------------------------------------- |
-| `api-client.ts`     | openapi-fetch middleware pattern works well       |
-| `ErrorBoundary.tsx` | Already uses browserLogger correctly              |
-| `config.ts`         | Feature flags needed for browser batching control |
+| File                | Change                                                            |
+| ------------------- | ----------------------------------------------------------------- |
+| `app/layout.tsx`    | Wrapped app with `<Logger>` component (Provider + Error Boundary) |
+| `browser-logger.ts` | Simplified to use `useLogger()` hook from React context           |
+| `app/page.tsx`      | Now uses `useLogger()` hook instead of wrapper                    |
+| `providers.tsx`     | Removed manual setup, let `<Logger>` handle it                    |
+| `query-client.ts`   | Uses `useLogger()` in callbacks instead of direct import          |
 
 ### Benefits
 
-1. **Less custom code**: Winston configuration is handled by the package
-2. **Better performance tracking**: Built-in `measure()` utility
-3. **Future-proof**: Package updates benefit the demo automatically
-4. **Consistent API**: Same import works in browser and server
+1. **Deep React Integration**: Logger context available throughout app via hooks
+2. **Automatic Setup**: `<Logger>` component handles provider + error boundary
+3. **Cleaner Code**: Less boilerplate, direct hook usage
+4. **Future-Proof**: React hooks pattern is standard and maintainable
+
+### @zaob/glean-logger/react Exports
+
+| Export                | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `Logger`              | Combined Provider + Error Boundary               |
+| `LoggerProvider`      | React Context Provider                           |
+| `LoggerErrorBoundary` | Error Boundary with automatic logging            |
+| `useLogger()`         | Hook to access logger in components              |
+| `useLoggerContext()`  | Hook to access logger utilities (flush, getLogs) |
+
+### Usage Example
+
+```tsx
+// Wrap app with Logger (includes Provider + Error Boundary)
+<Logger>
+  <YourApp />
+</Logger>;
+
+// Use logger in components with useLogger hook
+function MyComponent() {
+  const logger = useLogger();
+
+  return <button onClick={() => logger.info('Clicked')}>Click me</button>;
+}
+```
 
 ## See Also
 

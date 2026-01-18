@@ -1,27 +1,46 @@
 import { QueryClient, QueryCache } from '@tanstack/react-query';
-import { browserLogger } from './browser-logger';
+import { useLogger } from '@zaob/glean-logger/react';
 import { isBrowserQueriesEnabled } from './config';
 
+/**
+ * Custom hook for React Query logging
+ * Calls useLogger() at top level to comply with React Rules of Hooks
+ */
+function useQueryLogger() {
+  const logger = useLogger();
+
+  return {
+    onSuccess: (data: unknown, query: { queryKey: readonly unknown[] }) => {
+      logger.info('Query succeeded', {
+        queryKey: query.queryKey,
+        dataKeys:
+          typeof data === 'object' && data !== null
+            ? Object.keys(data as Record<string, unknown>).slice(0, 5)
+            : undefined,
+      });
+    },
+    onError: (error: unknown, query: { queryKey: readonly unknown[] }) => {
+      logger.error('Query failed', {
+        queryKey: query.queryKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
+  };
+}
+
 export function createLoggingQueryClient() {
+  const queryLogger = useQueryLogger();
+
   return new QueryClient({
     queryCache: new QueryCache({
       onSuccess: (data, query) => {
         if (isBrowserQueriesEnabled()) {
-          browserLogger.info('Query succeeded', {
-            queryKey: query.queryKey,
-            dataKeys:
-              typeof data === 'object' && data !== null
-                ? Object.keys(data as Record<string, unknown>).slice(0, 5)
-                : undefined,
-          });
+          queryLogger.onSuccess(data, query);
         }
       },
       onError: (error, query) => {
         if (isBrowserQueriesEnabled()) {
-          browserLogger.error('Query failed', {
-            queryKey: query.queryKey,
-            error: error instanceof Error ? error.message : String(error),
-          });
+          queryLogger.onError(error, query);
         }
       },
     }),

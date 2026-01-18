@@ -2,11 +2,12 @@
 'use client';
 
 import { UserList, UserFetcher, ManualLogDemo } from '@/components/DemoComponents';
-import { browserLogger } from '@/lib/browser-logger';
+import { useLogger } from '@zaob/glean-logger/react';
 import { getLoggingConfig } from '@/lib/config';
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
+  const logger = useLogger();
   const [config, setConfig] = useState<ReturnType<typeof getLoggingConfig> | null>(null);
 
   useEffect(() => {
@@ -17,9 +18,9 @@ export default function HomePage() {
     try {
       const response = await fetch('/api/demo');
       const data = await response.json();
-      browserLogger.info('API Demo Response', { data });
+      logger.info('API Demo Response', { data });
     } catch (error) {
-      browserLogger.error('API Demo Error', { error: String(error) });
+      logger.error('API Demo Error', { error: String(error) });
     }
   };
 
@@ -108,7 +109,7 @@ export default function HomePage() {
         }}
       >
         <h3 style={{ marginTop: 0 }}>API Request Logging</h3>
-        <p>Click the button to make an API call that will be logged on both client and server.</p>
+        <p>Click button to make an API call that will be logged on both client and server.</p>
         <button
           onClick={handleFetchApi}
           style={{

@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+'use client';
+
 /**
  * React Integration for Browser Logging
  *

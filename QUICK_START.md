@@ -630,6 +630,63 @@ const customConfig = new ApiLoggerBuilder()
   .build();
 ```
 
+### 7. Log Normalization (New)
+
+The package includes utilities to normalize and clean logs before storage:
+
+```typescript
+import {
+  normalizeBrowserLogEntry,
+  serializeError,
+  serializeConsoleArgs,
+} from '@zaob/glean-logger/utils';
+
+// Clean error object for JSON
+const cleanError = serializeError(new Error('Failed'));
+
+// Normalize browser log entry
+const normalized = normalizeBrowserLogEntry(entry);
+```
+
+### 8. React Integration
+
+Deep React integration with Context, Hooks, and Error Boundary:
+
+```tsx
+// app/layout.tsx
+import { Logger } from '@zaob/glean-logger/react';
+
+export default function RootLayout({ children }) {
+  return <Logger>{children}</Logger>;
+}
+
+// app/page.tsx
+('use client');
+import { useLogger } from '@zaob/glean-logger/react';
+
+export default function MyComponent() {
+  const logger = useLogger();
+
+  const handleClick = () => {
+    logger.info('Button clicked', { buttonId: 'submit' });
+  };
+
+  return <button onClick={handleClick}>Click me</button>;
+}
+```
+
+**React Exports:**
+
+| Export                | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `Logger`              | Combined Provider + Error Boundary (recommended) |
+| `LoggerProvider`      | React Context Provider                           |
+| `LoggerErrorBoundary` | Error Boundary with automatic logging            |
+| `useLogger()`         | Hook to access logger in components              |
+| `useLoggerContext()`  | Hook to access utilities (flush, getLogs)        |
+
+**Example with Next.js:** See [examples/nextjs-logging-demo](examples/nextjs-logging-demo/)
+
 ---
 
 ## 🔧 Configuration Presets
@@ -678,6 +735,16 @@ const config = new ApiLoggerBuilder()
 | `child(context)`     | Child logger with persistent context              | Server      |
 | `measure(label, fn)` | Time async operations                             | Both        |
 
+### React Integration (@zaob/glean-logger/react)
+
+| Export                | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `Logger`              | Combined Provider + Error Boundary (recommended) |
+| `LoggerProvider`      | React Context Provider                           |
+| `LoggerErrorBoundary` | Error Boundary with automatic logging            |
+| `useLogger()`         | Hook to access logger in components              |
+| `useLoggerContext()`  | Hook to access utilities (flush, getLogs)        |
+
 ### HTTP Logging
 
 | Function/Class                | Description                                       |
@@ -702,13 +769,14 @@ const config = new ApiLoggerBuilder()
 
 ## 📁 Examples
 
-| Example                                            | Description                   | When to Use                 |
-| -------------------------------------------------- | ----------------------------- | --------------------------- |
-| [basic-starter](examples/basic-starter/)           | Core logging functionality    | Getting started             |
-| [express-api](examples/express-api/)               | Express.js with HTTP logging  | Backend API development     |
-| [nextjs-app](examples/nextjs-app/)                 | Next.js client/server logging | Full-stack Next.js apps     |
-| [performance-demo](examples/performance-demo/)     | Performance tracking patterns | Benchmarking & optimization |
-| [security-redaction](examples/security-redaction/) | Sensitive data protection     | Compliance & security       |
+| Example                                              | Description                    | When to Use                 |
+| ---------------------------------------------------- | ------------------------------ | --------------------------- |
+| [basic-starter](examples/basic-starter/)             | Core logging functionality     | Getting started             |
+| [express-api](examples/express-api/)                 | Express.js with HTTP logging   | Backend API development     |
+| [nextjs-logging-demo](examples/nextjs-logging-demo/) | Next.js with React integration | Full-stack React apps (NEW) |
+| [nextjs-app](examples/nextjs-app/)                   | Next.js client/server logging  | Full-stack Next.js apps     |
+| [performance-demo](examples/performance-demo/)       | Performance tracking patterns  | Benchmarking & optimization |
+| [security-redaction](examples/security-redaction/)   | Sensitive data protection      | Compliance & security       |
 
 ---
 

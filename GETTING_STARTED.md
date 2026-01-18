@@ -49,6 +49,15 @@ npm run dev
 
 Logs appear in your terminal with colors and are saved to `_logs/` directory.
 
+### 4. Browser Log Sync
+
+Browser logs are automatically synced to the server by default (batched or immediate for errors).
+
+```typescript
+// Client-side logs are sent to /api/logs
+log.error('Something went wrong', { error: err });
+```
+
 ---
 
 ## 🚫 Disable in Production
