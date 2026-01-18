@@ -1114,7 +1114,7 @@ packages:
     resolution: {integrity: sha512-RG6iy+IzQpa9SB8HAFHJ9Y+pTzI+h8553MrciN9eC6TFBErqrQaTas4vG+MVj8S4uKk8uTT2p0vgZPnTdxd96w==}
 
   '@zaob/glean-logger@file:../../zaob-glean-logger-1.2.0.tgz':
-    resolution: {integrity: sha512-nIdygd3DiG9yfogtYFtfd5T50SR2aWF9mZ9C4PsDBVMetmXg7AcR7sUJNXQGjYXzWqW90AU9oZ1+B/V+MCwuaQ==, tarball: file:../../zaob-glean-logger-1.2.0.tgz}
+    resolution: {integrity: sha512-WrPJflkTfHZ0MV7He5nHU3fcDsKOMgpCAje8tT4ZsHYV0UVsDrujfJucbZM3uyE+VyAzUgCu3R8rDuRlpug/Ew==, tarball: file:../../zaob-glean-logger-1.2.0.tgz}
     version: 1.2.0
     engines: {node: '>=18.0.0'}
     peerDependencies:

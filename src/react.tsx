@@ -42,7 +42,7 @@ import React, {
   type ErrorInfo,
   type ReactElement,
 } from 'react';
-import type { IBrowserLogger, BrowserLogEntry, LogContext } from './types';
+import type { IBrowserLogger, BrowserLogEntry, LogContext, LogLevel } from './types';
 
 /**
  * Browser logger instance reference for React integration
@@ -63,6 +63,68 @@ export function setBrowserLogger(logger: IBrowserLogger): void {
 export function getBrowserLogger(): IBrowserLogger | null {
   return browserLoggerInstance;
 }
+
+/**
+ * Factory function to create a browser logger instance
+ *
+ * This is useful for module-level usage where React hooks are not available.
+ * Returns a logger instance that works immediately, even before React component tree mounts.
+ *
+ * @example
+ * ```ts
+ * // In a non-React file (e.g., QueryClient config)
+ * import { createBrowserLogger } from '@zaob/glean-logger/react';
+ *
+ * const logger = createBrowserLogger();
+ * logger.info('Module initialized', { name: 'query-client' });
+ * ```
+ */
+export function createBrowserLogger(): IBrowserLogger {
+  const noopLogger: IBrowserLogger = {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    log: () => {},
+    getStoredLogs: () => [],
+    clearStoredLogs: () => {},
+    flush: async () => {},
+  };
+
+  return {
+    debug: (message: string, context?: LogContext) =>
+      browserLoggerInstance?.debug(message, context) || noopLogger.debug(message, context),
+    info: (message: string, context?: LogContext) =>
+      browserLoggerInstance?.info(message, context) || noopLogger.info(message, context),
+    warn: (message: string, context?: LogContext) =>
+      browserLoggerInstance?.warn(message, context) || noopLogger.warn(message, context),
+    error: (message: string, context?: LogContext) =>
+      browserLoggerInstance?.error(message, context) || noopLogger.error(message, context),
+    log: (level: LogLevel, message: string, context?: LogContext) =>
+      browserLoggerInstance?.log(level, message, context) ||
+      noopLogger.log(level, message, context),
+    getStoredLogs: () => browserLoggerInstance?.getStoredLogs() || noopLogger.getStoredLogs(),
+    clearStoredLogs: () => browserLoggerInstance?.clearStoredLogs() || noopLogger.clearStoredLogs(),
+    flush: async () => browserLoggerInstance?.flush() || noopLogger.flush(),
+  };
+}
+
+/**
+ * Singleton logger object for module-level usage
+ *
+ * Provides direct access to logger methods without calling hooks.
+ * Methods delegate to current browser logger instance.
+ *
+ * @example
+ * ```ts
+ * // In a non-React file (e.g., QueryClient config)
+ * import { logger } from '@zaob/glean-logger/react';
+ *
+ * logger.info('Module initialized', { name: 'query-client' });
+ * logger.error('Something went wrong', { error: err });
+ * ```
+ */
+export const logger: IBrowserLogger = createBrowserLogger();
 
 // ============================================================================
 // Context Types
