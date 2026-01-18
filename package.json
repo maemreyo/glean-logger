@@ -7,7 +7,10 @@
         "dist/index.d.ts"
       ],
       "browser": [
-        "dist/browser-entry.d.mts"
+        "dist/browser-entry.d.ts"
+      ],
+      "react": [
+        "dist/react.d.ts"
       ]
     }
   },
@@ -18,7 +21,7 @@
   "exports": {
     ".": {
       "browser": {
-        "types": "./dist/browser-entry.d.mts",
+        "types": "./dist/browser-entry.d.ts",
         "import": "./dist/browser-entry.mjs",
         "require": "./dist/browser-entry.js"
       },
@@ -45,7 +48,7 @@
       "default": "./dist/index.mjs"
     },
     "./react": {
-      "types": "./dist/react.d.mts",
+      "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",
       "require": "./dist/react.js",
       "default": "./dist/react.mjs"
@@ -68,8 +71,14 @@
   "scripts": {
     "setup": "./setup.sh",
     "install:deps": "./install.sh",
-    "build": "NODE_ENV=production tsup",
-    "build:watch": "tsup --watch",
+    "build": "run-s clean build:server build:browser build:react build:next-plugin",
+    "build:all": "run-s build:server build:browser build:react build:next-plugin",
+    "build:server": "vite build --config vite.config.server.ts --mode production",
+    "build:browser": "vite build --config vite.config.browser.ts --mode production",
+    "build:react": "vite build --config vite.config.react.ts --mode production",
+    "build:next-plugin": "vite build --config vite.config.next-plugin.ts --mode production",
+    "build:watch": "vite build --config vite.config.server.ts --watch",
+    "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.js,.mjs --fix",
     "lint:check": "eslint . --ext .ts,.js,.mjs",
@@ -149,6 +158,7 @@
     "@types/safe-json-stringify": "^1.1.5",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
+    "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.25.1",
     "eslint-config-prettier": "^9.1.0",
@@ -159,18 +169,23 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.0.0",
     "next": "^14.0.0",
+    "npm-run-all": "^4.1.5",
     "prettier": "^3.7.4",
     "release-it": "^19.2.3",
+    "rollup-plugin-preserve-directives": "^0.4.0",
     "semantic-release": "^24.2.9",
-    "tsup": "^8.5.1",
     "typedoc": "^0.27.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.53.0",
+    "vite": "^7.3.1",
+    "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-static-copy": "^3.1.4",
     "vitest": "^4.0.16",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
     "safe-json-stringify": "^1.2.0",
     "serialize-error": "^13.0.0"
   }

@@ -19,7 +19,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.60.0",
     "@testing-library/dom": "^10.4.1",
-    "@zaob/glean-logger": "file:../..",
+    "@zaob/glean-logger": "file:/Users/trung.ngo/Documents/zaob-dev/glean-logger/zaob-glean-logger-1.2.0.tgz",
     "next": "16.1.2",
     "openapi-fetch": "^0.13.0",
     "react": "19.2.3",
