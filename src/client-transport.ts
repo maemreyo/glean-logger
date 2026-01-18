@@ -140,14 +140,6 @@ export class ClientTransport {
       return;
     }
 
-    console.debug('[ClientTransport] Adding entry to buffer:', {
-      id: entry.id,
-      level: entry.level,
-      message: entry.message.substring(0, 50),
-      bufferSize: this.buffer.length + 1,
-      mode: this.config.batch.mode,
-    });
-
     this.buffer.push(entry);
 
     // Handle different batching modes
@@ -177,16 +169,10 @@ export class ClientTransport {
     this.buffer = [];
     this.sending = true;
 
-    console.debug('[ClientTransport] Flushing batch:', {
-      count: batch.length,
-      endpoint: this.config.endpoint,
-    });
-
     try {
       await this.sendWithRetry(batch);
-      console.debug('[ClientTransport] Flush complete');
     } catch (error) {
-      console.error('[ClientTransport] Flush failed:', error);
+      // Silently fail - logging errors shouldn't break the app
     } finally {
       this.sending = false;
       // Restart timer for time-based batching
@@ -209,13 +195,9 @@ export class ClientTransport {
 
     try {
       await this.doSend(batch);
-    } catch (error) {
+    } catch {
       if (attempt >= this.config.retry.maxRetries) {
-        console.error(
-          '[ClientTransport] Max retries reached, dropping batch of',
-          batch.length,
-          'logs'
-        );
+        // Silently drop - don't pollute logs with transport failures
         return;
       }
 

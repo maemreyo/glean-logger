@@ -31,16 +31,7 @@ import {
 } from './interceptors';
 import { getClientTransport, createClientTransport } from './client-transport';
 import { perf } from './timing';
-import type {
-  LogContext,
-  LogLevel,
-  IBrowserLogger,
-  BatchingConfig,
-  TransportConfig,
-  RetryConfig,
-  ClientLogEntry,
-  LogSource,
-} from './types';
+import type { LogContext, LogLevel, IBrowserLogger, ClientLogEntry, LogSource } from './types';
 
 export { perf as performance } from './timing';
 
@@ -61,56 +52,6 @@ export async function measure<T>(
   const result = await fn();
   const duration = perf.now() - start;
   return { result, duration };
-}
-
-export function getBatchingConfig(): BatchingConfig {
-  return {
-    mode: 'immediate',
-    timeIntervalMs: 3000,
-    countThreshold: 10,
-  };
-}
-
-export function getTransportConfig(): TransportConfig {
-  const getEnv = (key: string, fallback: string): string => {
-    if (typeof window !== 'undefined' && typeof process !== 'undefined') {
-      const publicKey = `NEXT_PUBLIC_${key}`;
-      const value = (process.env as Record<string, string | undefined>)[publicKey];
-      if (value) return value;
-    }
-    return fallback;
-  };
-
-  return {
-    endpoint: getEnv('LOGGER_ENDPOINT', '/api/logs'),
-    batch: getBatchingConfig(),
-    retry: getRetryConfig(),
-  };
-}
-
-export function getRetryConfig(): RetryConfig {
-  const getEnv = (key: string, fallback: string): string => {
-    if (typeof window !== 'undefined' && typeof process !== 'undefined') {
-      const publicKey = `NEXT_PUBLIC_${key}`;
-      const value = (process.env as Record<string, string | undefined>)[publicKey];
-      if (value) return value;
-    }
-    return fallback;
-  };
-
-  const retryEnabled = getEnv('LOGGER_RETRY_ENABLED', 'true');
-  const maxRetries = getEnv('LOGGER_RETRY_MAX', '3');
-  const initialDelay = getEnv('LOGGER_RETRY_DELAY', '1000');
-  const maxDelay = getEnv('LOGGER_RETRY_MAX_DELAY', '30000');
-  const multiplier = getEnv('LOGGER_RETRY_MULTIPLIER', '2');
-
-  return {
-    enabled: retryEnabled === 'true',
-    maxRetries: parseInt(maxRetries, 10) || 3,
-    initialDelayMs: parseInt(initialDelay, 10) || 1000,
-    maxDelayMs: parseInt(maxDelay, 10) || 30000,
-    backoffMultiplier: parseFloat(multiplier) || 2,
-  };
 }
 
 export type { IBrowserLogger, LogContext, LogLevel, ClientLogEntry, LogSource };

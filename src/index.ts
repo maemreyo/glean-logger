@@ -256,14 +256,8 @@ export type { BodyLoggingConfig } from './types';
 // Browser Log Sync Features (Feature: 001-browser-log-sync)
 // ============================================================================
 
-// Config exports for browser transport
-export {
-  getTransportConfig,
-  getBatchingConfig,
-  getRetryConfig,
-  DEFAULT_BATCHING,
-  DEFAULT_RETRY,
-} from './config';
+// Config constants for browser transport
+export { DEFAULT_BATCHING, DEFAULT_RETRY } from './config';
 
 // Interceptor exports
 export {
@@ -282,3 +276,11 @@ export {
 
 // Client log entry types for browser
 export type { ClientLogEntry, LogSource } from './types';
+
+// Utility exports for log normalization
+export {
+  normalizeBrowserLogEntry,
+  serializeError,
+  serializeConsoleArgs,
+  type NormalizedBrowserLog,
+} from './utils';

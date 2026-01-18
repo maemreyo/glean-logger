@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { measure, logger } from '@zaob/glean-logger';
+import { measure, logger, normalizeBrowserLogEntry, serializeError } from '@zaob/glean-logger';
 import { serverLogger } from '@/lib/server-logger';
 
 const log = logger({ name: 'api-logs' });
@@ -28,28 +28,46 @@ export async function POST(request: NextRequest) {
     const { result: processedCount, duration } = await measure('process-browser-logs', async () => {
       let count = 0;
       for (const logEntry of logs) {
-        const logData = {
+        // Normalize the entry to clean structure
+        const normalized = normalizeBrowserLogEntry({
+          id: logEntry.id,
+          timestamp: logEntry.timestamp,
+          level: logEntry.level,
+          message: logEntry.message,
+          context: logEntry.context,
+          source: logEntry.source,
+        });
+
+        // Create clean log data for server logger
+        const logData: Record<string, unknown> = {
           browserId: logEntry.id,
           browserTimestamp: logEntry.timestamp,
           browserSource: logEntry.source,
-          ...logEntry.context,
         };
+
+        // Add normalized context (already cleaned of internal fields)
+        if (normalized.context) {
+          Object.assign(logData, normalized.context);
+        }
+
+        // Add error info if present
+        if (normalized.error) {
+          logData.error = normalized.error;
+        }
 
         switch (logEntry.level) {
           case 'debug':
-            serverLogger.debug(logEntry.message, logData);
+            serverLogger.debug(normalized.message, logData);
             break;
           case 'info':
-            serverLogger.info(logEntry.message, logData);
+            serverLogger.info(normalized.message, logData);
             break;
           case 'warn':
-            serverLogger.warn(logEntry.message, logData);
+            serverLogger.warn(normalized.message, logData);
             break;
           case 'error':
-            serverLogger.error(logEntry.message, logData);
-            break;
           case 'fatal':
-            serverLogger.error(logEntry.message, logData);
+            serverLogger.error(normalized.message, logData);
             break;
         }
         count++;
@@ -71,7 +89,7 @@ export async function POST(request: NextRequest) {
     const totalDuration = Date.now() - startTime;
     log.error('Failed to process logs', {
       requestId,
-      error: error instanceof Error ? error.message : String(error),
+      error: serializeError(error),
       duration: `${totalDuration}ms`,
       type: 'error',
     });

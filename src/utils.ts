@@ -264,3 +264,160 @@ export function setNestedValue(obj: Record<string, unknown>, path: string, value
   const lastKey = keys[keys.length - 1] ?? '';
   current[lastKey] = value;
 }
+
+// ============================================================================
+// Log Normalization Utilities
+// ============================================================================
+
+import { serializeError as _serializeError } from 'serialize-error';
+import safeJsonStringifyPkg from 'safe-json-stringify';
+
+/**
+ * Serialize an Error object to a clean JSON structure
+ * Handles Error, unknown, and primitive values safely
+ */
+export function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return _serializeError(error);
+  }
+  if (typeof error === 'object' && error !== null) {
+    try {
+      return JSON.parse(safeJsonStringifyPkg(error));
+    } catch {
+      return { message: String(error) };
+    }
+  }
+  return { message: String(error) };
+}
+
+/**
+ * Serialize console.log arguments to a clean string representation
+ * Handles objects, errors, primitives, and mixed arguments
+ */
+export function serializeConsoleArgs(args: unknown[]): string {
+  return args
+    .map(arg => {
+      // Handle Error objects
+      if (arg instanceof Error) {
+        return `[Error: ${arg.message}]`;
+      }
+      // Handle objects
+      if (typeof arg === 'object' && arg !== null) {
+        try {
+          return safeJsonStringifyPkg(arg);
+        } catch {
+          return '[Object]';
+        }
+      }
+      // Handle primitives
+      return String(arg);
+    })
+    .join(' ');
+}
+
+/**
+ * Internal fields that should be removed from logs before sending to server
+ */
+const INTERNAL_FIELDS = new Set(['bufferSize', 'mode', 'consoleArgs', 'consoleMethod']);
+
+/**
+ * Normalize a browser log entry to a clean, structured format
+ * Removes internal fields and standardizes the structure
+ */
+export interface NormalizedBrowserLog {
+  '@timestamp': string;
+  level: string;
+  message: string;
+  browserId?: string;
+  browserSource?: string;
+  context?: Record<string, unknown>;
+  error?: {
+    message: string;
+    type: string;
+    stack?: string;
+  };
+}
+
+/**
+ * Normalize a browser log entry for server-side processing
+ * - Removes internal fields (bufferSize, mode, consoleArgs, etc.)
+ * - Converts timestamp to ISO 8601
+ * - Standardizes level to uppercase
+ * - Extracts error information properly
+ */
+export function normalizeBrowserLogEntry(entry: {
+  id: string;
+  timestamp: number;
+  level: string;
+  message: string;
+  context?: Record<string, unknown>;
+  source?: string;
+}): NormalizedBrowserLog {
+  const normalized: NormalizedBrowserLog = {
+    '@timestamp': new Date(entry.timestamp).toISOString(),
+    level: entry.level.toUpperCase(),
+    message: entry.message,
+  };
+
+  // Add browser-specific fields if present
+  if (entry.source) {
+    normalized.browserSource = entry.source;
+  }
+
+  // Add context if present and not empty
+  if (entry.context && Object.keys(entry.context).length > 0) {
+    // Filter out any internal fields from context
+    const cleanContext: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(entry.context)) {
+      if (!INTERNAL_FIELDS.has(key)) {
+        cleanContext[key] = value;
+      }
+    }
+    if (Object.keys(cleanContext).length > 0) {
+      normalized.context = cleanContext;
+    }
+  }
+
+  // Check if this is an error entry and extract error info
+  if (entry.level === 'error' || entry.level === 'fatal') {
+    const errorInfo = extractErrorInfo(entry.message, entry.context);
+    if (errorInfo) {
+      normalized.error = errorInfo;
+    }
+  }
+
+  return normalized;
+}
+
+/**
+ * Extract error information from message and context
+ */
+function extractErrorInfo(
+  message: string,
+  context?: Record<string, unknown>
+): { message: string; type: string; stack?: string } | null {
+  // Check context for error info first
+  if (context) {
+    if (context.error && typeof context.error === 'object') {
+      const errorObj = context.error as Record<string, unknown>;
+      return {
+        message: String(errorObj.message || message),
+        type: String(errorObj.name || errorObj.type || 'Error'),
+        stack: errorObj.stack ? String(errorObj.stack) : undefined,
+      };
+    }
+    if (context.stack && typeof context.stack === 'string') {
+      return {
+        message: message,
+        type: 'Error',
+        stack: context.stack,
+      };
+    }
+  }
+
+  // Default: return basic error info
+  return {
+    message: message,
+    type: 'Error',
+  };
+}

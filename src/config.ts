@@ -299,6 +299,8 @@ export function resetConfig(): void {
 /**
  * Get the batching configuration
  * Loads from environment variables with defaults
+ *
+ * @internal This function is for internal use only. Use DEFAULT_BATCHING constant instead.
  */
 export function getBatchingConfig(): BatchingConfig {
   return {
@@ -317,6 +319,8 @@ export function getBatchingConfig(): BatchingConfig {
 /**
  * Get the retry configuration
  * Loads from environment variables with defaults
+ *
+ * @internal This function is for internal use only. Use DEFAULT_RETRY constant instead.
  */
 export function getRetryConfig(): RetryConfig {
   return {
@@ -340,6 +344,8 @@ export function getRetryConfig(): RetryConfig {
 /**
  * Get the transport configuration
  * Combines batching, retry, and endpoint configuration
+ *
+ * @internal This function is for internal use only. Not exported from public API.
  */
 export function getTransportConfig(): TransportConfig {
   return {

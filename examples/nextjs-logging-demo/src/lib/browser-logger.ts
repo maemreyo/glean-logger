@@ -17,8 +17,6 @@ import {
   type LogContext,
   type LogLevel,
   type ClientLogEntry,
-  getBatchingConfig,
-  getTransportConfig,
 } from '@zaob/glean-logger';
 import { isLoggingEnabled, isBrowserExceptionsEnabled } from './config';
 
@@ -60,19 +58,11 @@ class BrowserLoggerImpl implements IBrowserLogger {
       level,
       message,
       context: context ?? {},
+      source: 'console',
     };
     this.logs.push(entry);
 
-    // Convert to ClientLogEntry and send to server via transport
-    const clientEntry: ClientLogEntry = {
-      id: entry.id,
-      timestamp: entry.timestamp,
-      level: entry.level,
-      message: entry.message,
-      context: entry.context,
-      source: 'console',
-    };
-    await this.transport.send(clientEntry);
+    await this.transport.send(entry);
   }
 
   debug(message: string, context?: LogContext): void {
@@ -171,14 +161,8 @@ export function setupBrowserLogging(): void {
   }
 
   // Log setup completion
-  const batchingConfig = getBatchingConfig();
-  const transportConfig = getTransportConfig();
   console.log('[BrowserLogger] Setup complete', {
     interceptorsActive,
-    batchingMode: batchingConfig.mode,
-    batchCount: batchingConfig.countThreshold,
-    batchInterval: batchingConfig.timeIntervalMs,
-    endpoint: transportConfig.endpoint,
   });
 }
 
