@@ -58,6 +58,14 @@ export function setBrowserLogger(logger: IBrowserLogger): void {
 }
 
 /**
+ * Set the global browser logger for non-React contexts (e.g., event handlers)
+ * Called by LoggerProvider when it mounts
+ */
+export function setGlobalBrowserLogger(logger: IBrowserLogger): void {
+  browserLoggerInstance = logger;
+}
+
+/**
  * Get the browser logger instance for React integration
  */
 export function getBrowserLogger(): IBrowserLogger | null {
@@ -216,6 +224,7 @@ export function LoggerProvider({
   useEffect(() => {
     if (actualLogger && !browserLoggerInstance) {
       setBrowserLogger(actualLogger);
+      setGlobalBrowserLogger(actualLogger);
     }
   }, [actualLogger]);
 

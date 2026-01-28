@@ -1,10 +1,46 @@
-import { useLogger, type IBrowserLogger, type LogContext } from '@zaob/glean-logger/react';
+import { setBrowserLogger, type IBrowserLogger, type LogContext } from '@zaob/glean-logger/react';
 
 export interface BrowserLogInput {
   level: 'debug' | 'info' | 'warn' | 'error';
   type: 'exception' | 'request' | 'query' | 'console' | 'custom';
   message: string;
   metadata?: Record<string, unknown>;
+}
+
+/**
+ * Global browser logger instance for non-React contexts
+ * This is set by the LoggerProvider when it mounts
+ */
+let globalBrowserLogger: IBrowserLogger | null = null;
+
+/**
+ * Set the global browser logger instance (called by LoggerProvider)
+ */
+export function setGlobalBrowserLogger(logger: IBrowserLogger): void {
+  globalBrowserLogger = logger;
+  setBrowserLogger(logger);
+}
+
+/**
+ * Get the global browser logger instance for non-React contexts
+ * Falls back to noop logger if not available
+ */
+function getBrowserLoggerInstance(): IBrowserLogger {
+  if (globalBrowserLogger) {
+    return globalBrowserLogger;
+  }
+
+  // Return noop logger as fallback
+  return {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    log: () => {},
+    getStoredLogs: () => [],
+    clearStoredLogs: () => {},
+    flush: async () => {},
+  };
 }
 
 export function logException(error: Error, errorInfo?: Record<string, unknown>): void {
@@ -52,10 +88,6 @@ export function log(
 ): void {
   const logger = getBrowserLoggerInstance();
   logger.log(level, message, { type: 'custom', ...metadata } as LogContext);
-}
-
-function getBrowserLoggerInstance(): IBrowserLogger {
-  return useLogger();
 }
 
 export const browserLogger = {
